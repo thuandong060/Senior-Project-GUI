@@ -93,10 +93,12 @@ class chessBoardWindow(QMainWindow):
 class pawn(QLabel):
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         if ev.button() == Qt.LeftButton:
+            # For some reason this is giving a lot of issues...
             self.move(ev.pos().x(), ev.pos().y())
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         # if ev.button() == Qt.LeftButton:
+        # For some reason this is giving a lot of issues...
         self.move(ev.pos().x(), ev.pos().y())
 
 
