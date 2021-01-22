@@ -91,16 +91,27 @@ class chessBoardWindow(QMainWindow):
 
 
 class pawn(QLabel):
+    previousPos = QPoint()
+    isDraggable = False
+
     def mousePressEvent(self, ev: QMouseEvent) -> None:
+        # If the person left clicks, set object as draggable and store position.
         if ev.button() == Qt.LeftButton:
-            # For some reason this is giving a lot of issues...
-            self.move(ev.pos().x(), ev.pos().y())
+            self.isDraggable = True
+            self.previousPos = ev.globalPos()
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
-        # if ev.button() == Qt.LeftButton:
-        # For some reason this is giving a lot of issues...
-        self.move(ev.pos().x(), ev.pos().y())
+        # If the object is draggable, use the current and previous global positions
+        # to create an offset (the object jitters without this). Set the new position
+        # using the current position and the offset. Finally, reset the old position.
+        if self.isDraggable:
+            offset = QPoint(ev.globalPos() - self.previousPos)
+            self.move(self.x() + offset.x(), self.y() + offset.y())
+            self.previousPos = ev.globalPos()
 
+    def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
+        self.isDraggable = False
+        
 
 def chessBoard():
     app = QApplication(sys.argv)
