@@ -32,14 +32,14 @@ class chessBoardWindow(QMainWindow):
                         ["0", "0", "0", "0", "0", "0", "0", "0"]]
 
         # Holds initial setup commands for the pieces.
-        self.pieceSet = [["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
+        self.pieceSet = [["br", "bk", "bb", "bki", "bq", "bb", "bk", "br"],
                          ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
                          ["0", "0", "0", "0", "0", "0", "0", "0"],
                          ["0", "0", "0", "0", "0", "0", "0", "0"],
                          ["0", "0", "0", "0", "0", "0", "0", "0"],
                          ["0", "0", "0", "0", "0", "0", "0", "0"],
                          ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
-                         ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"]]
+                         ["wr", "wk", "wb", "wki", "wq", "wb", "wk", "wr"]]
 
         # Holds labels for the pieces on the board.
         self.piecePos = [["0", "0", "0", "0", "0", "0", "0", "0"],
@@ -73,6 +73,16 @@ class chessBoardWindow(QMainWindow):
             for tile in row:
                 if not tile == "0":
                     if tile == "wp" or tile == "bp":
+                        label = pawn(parent=self)
+                    elif tile == "wr" or tile == "br":
+                        label = pawn(parent=self)
+                    elif tile == "wk" or tile == "bk":
+                        label = pawn(parent=self)
+                    elif tile == "wb" or tile == "bb":
+                        label = pawn(parent=self)
+                    elif tile == "wq" or tile == "bq":
+                        label = pawn(parent=self)
+                    elif tile == "wki" or tile == "bki":
                         label = pawn(parent=self)
                     else:
                         label = QLabel(self)
