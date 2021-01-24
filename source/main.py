@@ -1,7 +1,9 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QGroupBox, QLabel, QVBoxLayout, QWidget
-from PyQt5.QtGui import QPixmap, QMouseEvent, QCursor
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import Qt
+from source import piece
+import random
 
 
 class chessBoardWindow(QMainWindow):
@@ -10,6 +12,22 @@ class chessBoardWindow(QMainWindow):
         # This block sets up the window properties.
         self.setGeometry(400, 200, 300, 300)
         self.setWindowTitle('Chessboard')
+
+        # 0 for white, 1 for black
+        self.turn = 0
+        self.moveIndicator = QLabel(self)
+
+        # Shows remaining moves.
+        self.remainingMoveIndicator = QLabel(self)
+
+        # Button so you can skip your turn.
+        self.skipButton = QPushButton("End Turn", self)
+
+        # The basic unit of measurement for the board.
+        self.tileSize = 0
+        self.boardSize = 0
+
+        self.playerTurnsRemaining = [1, 1, 1]
 
         # Holds initial setup commands for the board.
         self.tileSet = [["wt", "bt", "wt", "bt", "wt", "bt", "wt", "bt"],
@@ -53,17 +71,41 @@ class chessBoardWindow(QMainWindow):
 
         self.showBoard()
 
-    # Initialize the board.
     def showBoard(self):
+        # Initialize the board.
         self.setBoard()
-
-        self.resize(self.tilePos[0][0].width() * 8, self.tilePos[0][0].height() * 8)
+        self.resize(self.boardSize + self.moveIndicator.width(), self.boardSize)
 
     def setBoard(self):
+        self.tileSize = 75
+        self.boardSize = self.tileSize * 8
         self.addBoardComponents(self.tileSet, self.tilePos)
         self.addBoardComponents(self.pieceSet, self.piecePos)
 
+        # Set up the move indicator properties
+        self.moveIndicator.setText("Turn: White")
+        self.moveIndicator.setAlignment(Qt.AlignCenter)
+        self.moveIndicator.resize(200, 25)
+        self.setFont(QFont('Arial', 16))
+        self.moveIndicator.move(self.boardSize, self.boardSize / 2 - 50)
+
+        # Set up remaining move indicator
+        self.remainingMoveIndicator.setText("Remaining Moves:"
+                                            "\nLeft Corp: " + str(self.playerTurnsRemaining[0]) +
+                                            "\nCenter Corp: " + str(self.playerTurnsRemaining[1]) +
+                                            "\nRight Corp: " + str(self.playerTurnsRemaining[2]))
+        self.remainingMoveIndicator.setAlignment(Qt.AlignCenter)
+        self.remainingMoveIndicator.resize(200, 100)
+        self.setFont(QFont('Arial', 16))
+        self.remainingMoveIndicator.move(self.boardSize, self.boardSize / 2)
+
+        # Set up skip button
+        self.skipButton.clicked.connect(self.switchTurn)
+        self.skipButton.move(self.boardSize - ((self.skipButton.width() - self.moveIndicator.width()) / 2),
+                             self.boardSize / 2 + 130)
+
     def addBoardComponents(self, sender, destination):
+        # These are used as iterators to move through the arrays.
         xiter = 0
         yiter = 0
 
@@ -72,25 +114,38 @@ class chessBoardWindow(QMainWindow):
         for row in sender:
             for tile in row:
                 if not tile == "0":
+                    # This assigns special properties to each piece type.
                     if tile == "wp" or tile == "bp":
-                        label = pawn(parent=self)
+                        if xiter <= 2:
+                            label = piece.piece(tile[0], "pawn", 0, parent=self)
+                        elif xiter == 3 or xiter == 4:
+                            label = piece.piece(tile[0], "pawn", 1, parent=self)
+                        elif xiter >= 5:
+                            label = piece.piece(tile[0], "pawn", 2, parent=self)
                     elif tile == "wr" or tile == "br":
-                        label = pawn(parent=self)
+                        label = piece.piece(tile[0], "rook", 1, parent=self)
                     elif tile == "wk" or tile == "bk":
-                        label = pawn(parent=self)
+                        if xiter <= 2:
+                            label = piece.piece(tile[0], "knight", 0, parent=self)
+                        elif xiter >= 5:
+                            label = piece.piece(tile[0], "knight", 2, parent=self)
                     elif tile == "wb" or tile == "bb":
-                        label = pawn(parent=self)
+                        if xiter <= 2:
+                            label = piece.piece(tile[0], "bishop", 0, parent=self)
+                        elif xiter >= 5:
+                            label = piece.piece(tile[0], "bishop", 2, parent=self)
                     elif tile == "wq" or tile == "bq":
-                        label = pawn(parent=self)
+                        label = piece.piece(tile[0], "queen", 1, parent=self)
                     elif tile == "wki" or tile == "bki":
-                        label = pawn(parent=self)
+                        label = piece.piece(tile[0], "king", 1, parent=self)
                     else:
                         label = QLabel(self)
                     # Set the image based on the array element.
                     label.resize(75, 75)
-                    pixmap = QPixmap('../img/' + tile).scaled(label.width(), label.height())
+                    pixmap = QPixmap('../img/' + tile)
                     label.setPixmap(pixmap)
-                    label.move(xiter * label.width(), yiter * label.height())
+                    label.setScaledContents(True)
+                    label.move(xiter * self.tileSize, yiter * self.tileSize)
 
                     # Move the new label to the label array.
                     destination[yiter][xiter] = label
@@ -99,67 +154,94 @@ class chessBoardWindow(QMainWindow):
             xiter = 0
             yiter += 1
 
+    def checkSwitchTurn(self, commander):
+        # Remove the move authority from the current commander and check to see if all command authority is removed.
+        self.playerTurnsRemaining[commander] = 0
+        self.remainingMoveIndicator.setText("Remaining Moves:"
+                                            "\nLeft Corp: " + str(self.playerTurnsRemaining[0]) +
+                                            "\nCenter Corp: " + str(self.playerTurnsRemaining[1]) +
+                                            "\nRight Corp: " + str(self.playerTurnsRemaining[2]))
+        if self.playerTurnsRemaining[0] + self.playerTurnsRemaining[1] + self.playerTurnsRemaining[2] == 0:
+            self.switchTurn()
 
-# Note: A lot of this can and probably will be moves to another method for reuse!
-class pawn(QLabel):
-    def __init__(self, parent=None):
-        super(pawn, self).__init__(parent)
+    def switchTurn(self):
+        # Switch the turn to the other person and update the UI.
+        if self.turn == 0:
+            self.turn = 1
+            self.moveIndicator.setText("Turn: Black")
+            # Remove this later
+            self.playerTurnsRemaining = [1, 1, 1]
+        else:
+            self.turn = 0
+            self.moveIndicator.setText("Turn: White")
+            self.playerTurnsRemaining = [1, 1, 1]
+        self.remainingMoveIndicator.setText("Remaining Moves:"
+                                            "\nLeft Corp: " + str(self.playerTurnsRemaining[0]) +
+                                            "\nCenter Corp: " + str(self.playerTurnsRemaining[1]) +
+                                            "\nRight Corp: " + str(self.playerTurnsRemaining[2]))
 
-        self.previousPos = QPoint()
-        self.offset = QPoint()
-        self.isDraggable = False
-        self.isOnBoarder = False
-        self.startingPosition = [0, 0]
-        self.endingPosition = [0, 0]
+    def movePiece(self, fromPos, toPos, commander):
+        if not fromPos == toPos:
+            if self.checkValidMove(fromPos, toPos):
+                # Move the object through the array to match its movements on the gui.
+                if not self.piecePos[toPos[1]][toPos[0]] == "0":
+                    if self.rollCapturePiece(toPos):
+                        self.capturePiece(toPos)
 
-    def mousePressEvent(self, ev: QMouseEvent) -> None:
-        # If the person left clicks, set object as draggable and store position.
-        if ev.button() == Qt.LeftButton:
-            self.isDraggable = True
-            self.previousPos = ev.globalPos()
-            self.offset = QPoint(ev.globalPos() - self.previousPos)
-            self.startingPosition = [int((self.x() + self.offset.x()) / self.width()),
-                                     int((self.y() + self.offset.y()) / self.height())]
-            self.raise_()
+                        self.moveOverGui(fromPos, toPos, commander)
+                    else:
+                        # Snap the piece back to its start position when the person releases it.
+                        self.piecePos[fromPos[1]][fromPos[0]].move(fromPos[0] * self.tileSize,
+                                                                   fromPos[1] * self.tileSize)
 
-    def mouseMoveEvent(self, ev: QMouseEvent) -> None:
-        # If the object is draggable, use the current and previous global positions
-        # to create an offset (the object jitters without this). Set the new position
-        # using the current position and the offset. Finally, reset the old position.
-        if self.isDraggable:
-            self.offset = QPoint(ev.globalPos() - self.previousPos)
-            if self.x() + self.offset.x() <= 0:
-                self.move(0, self.y() + self.offset.y())
-                self.isOnBoarder = True
-            if self.y() + self.offset.y() <= 0:
-                self.move(self.x() + self.offset.x(), 0)
-                self.isOnBoarder = True
-            if self.x() + self.offset.x() >= self.width() * 7:
-                self.move(self.width() * 7, self.y() + self.offset.y())
-                self.isOnBoarder = True
-            if self.y() + self.offset.y() >= self.height() * 7:
-                self.move(self.x() + self.offset.x(), self.height() * 7)
-                self.isOnBoarder = True
-            if not self.isOnBoarder:
-                self.move(self.x() + self.offset.x(), self.y() + self.offset.y())
-            self.previousPos = ev.globalPos()
-            self.isOnBoarder = False
+                        # Set and check the moves remaining for the current player.
+                        self.checkSwitchTurn(commander)
+                else:
+                    self.moveOverGui(fromPos, toPos, commander)
+            else:
+                # Snap the piece back to its start position when the person releases it.
+                self.piecePos[fromPos[1]][fromPos[0]].move(fromPos[0] * self.tileSize, fromPos[1] * self.tileSize)
+        else:
+            # Snap the piece back to its start position when the person releases it.
+            self.piecePos[fromPos[1]][fromPos[0]].move(fromPos[0] * self.tileSize, fromPos[1] * self.tileSize)
 
-    def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
-        self.isDraggable = False
-        self.isOnBoarder = False
-        self.offset = QPoint(ev.globalPos() - self.previousPos)
+    def moveOverGui(self, fromPos, toPos, commander):
         # Snap the piece to the nearest grid point when the person releases it.
-        self.move(round((self.x() + self.offset.x()) / self.width()) * self.width(),
-                  round((self.y() + self.offset.y()) / self.height()) * self.height())
-        # Move the object through the array to match its movements on the gui.
-        self.endingPosition = [round((self.x() + self.offset.x()) / self.width()),
-                               round((self.y() + self.offset.y()) / self.height())]
-        if not self.startingPosition == self.endingPosition:
-            self.parent().piecePos[self.endingPosition[1]][self.endingPosition[0]] = \
-                self.parent().piecePos[self.startingPosition[1]][self.startingPosition[0]]
-            self.parent().piecePos[self.startingPosition[1]][self.startingPosition[0]] = "0"
-            print(self.parent().piecePos)
+        self.piecePos[fromPos[1]][fromPos[0]].move(toPos[0] * self.tileSize, toPos[1] * self.tileSize)
+
+        self.moveThroughArray(fromPos, toPos, self.pieceSet)
+        self.moveThroughArray(fromPos, toPos, self.piecePos)
+
+        # Set and check the moves remaining for the current player.
+        self.checkSwitchTurn(commander)
+
+    def moveThroughArray(self, fromPos, toPos, pieceList):
+        # Copy this piece to destination.
+        pieceList[toPos[1]][toPos[0]] = pieceList[fromPos[1]][fromPos[0]]
+
+        # Remove it from the previous position.
+        pieceList[fromPos[1]][fromPos[0]] = "0"
+        print(pieceList)
+
+    def checkValidMove(self, fromPos, toPos):
+        # This needs to be updated with the actual rules!!!!
+        moveIsValid = True
+        if self.pieceSet[fromPos[1]][fromPos[0]][0] == self.pieceSet[toPos[1]][toPos[0]][0]:
+            moveIsValid = False
+        # do stuff to check and see if the move is valid
+        return moveIsValid
+
+    def rollCapturePiece(self, target):
+        # This needs to be updated with the actual capture weights!!!!
+        isCaptureSuccessful = False
+        if random.randint(0, 1) == 1:
+            isCaptureSuccessful = True
+        return isCaptureSuccessful
+
+    def capturePiece(self, target):
+        # This deletes a piece from the board.
+        self.piecePos[target[1]][target[0]].deleteLater()
+        self.piecePos[target[1]][target[0]] = "0"
 
 
 def chessBoard():
