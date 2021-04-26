@@ -1,20 +1,19 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
-from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QPixmap, QFont, QTransform
+from PyQt5.QtCore import Qt, QPropertyAnimation, QPoint, QEasingCurve
 from ChessRule import Piece
 from source import BoardInterface
-from time import sleep
 from source import AiMove
 from source import PieceMoveInfo
+from source import AnimationThread
+import math
 import random
 
 
 class chessBoardWindow(QMainWindow):
     def __init__(self):
         super(chessBoardWindow, self).__init__()
-
-
 
         # Thread storage.
         self.animThread = 0
@@ -24,6 +23,9 @@ class chessBoardWindow(QMainWindow):
         self.kingInterface = BoardInterface.BoardInterface(self)
         self.bishopInterface1 = BoardInterface.BoardInterface(self)
         self.bishopInterface2 = BoardInterface.BoardInterface(self)
+
+        # Line animation
+        self.moveOverLine = 0
 
         # Move list
         self.moveHistory = []
@@ -53,6 +55,9 @@ class chessBoardWindow(QMainWindow):
         self.turn = 0
         self.player = 0
         self.moveIndicator = QLabel(self)
+
+        # For when a player captures a piece
+        self.playerIsCapturing = False
 
         # Shows remaining moves.
         self.remainingMoveIndicator = QLabel(self)
@@ -84,6 +89,18 @@ class chessBoardWindow(QMainWindow):
         self.specialDieText = QLabel(self)
         self.captureRollText = QLabel(self)
         self.previousRoll = 0
+
+        # Components for the captured pieces pile.
+        self.whitePiecesCaptured = []
+        self.blackPiecesCaptured = []
+        self.whitePiecesCapturedText = QLabel(self)
+        self.blackPiecesCapturedText = QLabel(self)
+
+        # Attack Arrow
+        self.attackArrow = QLabel(self)
+        self.attackArrowX = 0
+        self.attackArrowY = 0
+        self.attackArrowAngle = 0
 
         # The basic unit of measurement for the board.
         self.tileSize = 0
@@ -207,11 +224,14 @@ class chessBoardWindow(QMainWindow):
         self.moveHistory = []
         self.turn = 0
         self.player = 0
+        self.playerIsCapturing = False
         self.whiteTurnsRemaining = [0, 0, 0]
         self.blackTurnsRemaining = [0, 0, 0]
         self.knightSpecialMovesRemaining = 0
         self.gameOver = False
         self.winner = 0
+
+        self.moveInfoIndicator.setText("Game Started")
 
         # Delete existing pieces
         xIter = 0
@@ -224,6 +244,15 @@ class chessBoardWindow(QMainWindow):
                 xIter += 1
             xIter = 0
             yIter += 1
+
+        for piece in self.whitePiecesCaptured:
+            piece.deleteLater()
+
+        for piece in self.blackPiecesCaptured:
+            piece.deleteLater()
+
+        self.whitePiecesCaptured = []
+        self.blackPiecesCaptured = []
 
         self.pauseBackground.hide()
         self.gameWinner.hide()
@@ -302,7 +331,8 @@ class chessBoardWindow(QMainWindow):
         font.setFamily('Arial')
         font.setPixelSize(self.chooseWhiteSide.height() * 0.6)
         self.chooseWhiteSide.setFont(font)
-        self.chooseWhiteSide.move(int((self.boardSize / 2) - (self.chooseWhiteSide.width() / 2)), int(self.boardSize / 2 + 150))
+        self.chooseWhiteSide.move(int((self.boardSize / 2) - (self.chooseWhiteSide.width() / 2)),
+                                  int(self.boardSize / 2 + 150))
         self.chooseWhiteSide.hide()
 
         # Set up the choose black side properties
@@ -312,7 +342,8 @@ class chessBoardWindow(QMainWindow):
         font.setFamily('Arial')
         font.setPixelSize(self.chooseBlackSide.height() * 0.6)
         self.chooseBlackSide.setFont(font)
-        self.chooseBlackSide.move(int((self.boardSize / 2) - (self.chooseBlackSide.width() / 2)), int(self.boardSize / 2 - 180))
+        self.chooseBlackSide.move(int((self.boardSize / 2) - (self.chooseBlackSide.width() / 2)),
+                                  int(self.boardSize / 2 - 180))
         self.chooseBlackSide.hide()
 
         # Set up the choose spectate properties
@@ -322,18 +353,41 @@ class chessBoardWindow(QMainWindow):
         font.setFamily('Arial')
         font.setPixelSize(self.chooseSpectate.height() * 0.6)
         self.chooseSpectate.setFont(font)
-        self.chooseSpectate.move(int((self.boardSize / 2) - (self.chooseSpectate.width() / 2)), int(self.boardSize / 2 - 15))
+        self.chooseSpectate.move(int((self.boardSize / 2) - (self.chooseSpectate.width() / 2)),
+                                 int(self.boardSize / 2 - 15))
         self.chooseSpectate.hide()
 
         # Set up the move indicator properties
         self.moveIndicator.setText("Turn: White")
         self.moveIndicator.setAlignment(Qt.AlignCenter)
-        self.moveIndicator.resize(200, 25)
+        self.moveIndicator.resize(225, 25)
         font = QFont()
         font.setFamily('Arial')
         font.setPixelSize(self.moveIndicator.height() * 0.8)
         self.moveIndicator.setFont(font)
         self.moveIndicator.move(int(self.boardSize), int(self.boardSize / 2 - 75) - (self.moveIndicator.height() / 2))
+
+        # Set up white capture pile text
+        self.whitePiecesCapturedText.setText("White Pieces Captured:")
+        self.whitePiecesCapturedText.setAlignment(Qt.AlignCenter)
+        self.whitePiecesCapturedText.resize(225, 25)
+        font = QFont()
+        font.setFamily('Arial')
+        font.setPixelSize(self.whitePiecesCapturedText.height() * 0.8)
+        self.whitePiecesCapturedText.setFont(font)
+        self.whitePiecesCapturedText.move(int(self.boardSize - ((self.whitePiecesCapturedText.width() - self.moveIndicator.width()) / 2)),
+                                          int(self.boardSize / 2 - 175) - (self.whitePiecesCapturedText.height() / 2))
+
+        # Set up black capture pile text
+        self.blackPiecesCapturedText.setText("Black Pieces Captured:")
+        self.blackPiecesCapturedText.setAlignment(Qt.AlignCenter)
+        self.blackPiecesCapturedText.resize(225, 25)
+        font = QFont()
+        font.setFamily('Arial')
+        font.setPixelSize(self.blackPiecesCapturedText.height() * 0.8)
+        self.blackPiecesCapturedText.setFont(font)
+        self.blackPiecesCapturedText.move(int(self.boardSize - ((self.blackPiecesCapturedText.width() - self.moveIndicator.width()) / 2)),
+                                          int(self.boardSize / 2 - 275) - (self.blackPiecesCapturedText.height() / 2))
 
         # Set up remaining move indicator
         self.remainingMoveIndicator.setText("Remaining Moves:"
@@ -346,24 +400,24 @@ class chessBoardWindow(QMainWindow):
         font.setFamily('Arial')
         font.setPixelSize(self.remainingMoveIndicator.height() * 0.2)
         self.remainingMoveIndicator.setFont(font)
-        self.remainingMoveIndicator.move(int(self.boardSize), int(self.boardSize / 2)
-                                         - (self.remainingMoveIndicator.height() / 2))
+        self.remainingMoveIndicator.move(int(self.boardSize - ((self.remainingMoveIndicator.width() - self.moveIndicator.width()) / 2)),
+                                         int(self.boardSize / 2) - (self.remainingMoveIndicator.height() / 2))
 
         # Set up the play indicator properties
-        self.moveInfoIndicator.setText("")
+        self.moveInfoIndicator.setText("Game Started")
         self.moveInfoIndicator.setAlignment(Qt.AlignCenter)
-        self.moveInfoIndicator.resize(200, 50)
+        self.moveInfoIndicator.resize(200, 75)
         font = QFont()
         font.setFamily('Arial')
-        font.setPixelSize(self.moveInfoIndicator.height() * 0.4)
+        font.setPixelSize(self.moveInfoIndicator.height() * 0.275)
         self.moveInfoIndicator.setFont(font)
-        self.moveInfoIndicator.move(int(self.boardSize), int(self.boardSize / 2 + 75)
-                                    - (self.moveIndicator.height() / 2))
+        self.moveInfoIndicator.move(int(self.boardSize - ((self.moveInfoIndicator.width() - self.moveIndicator.width()) / 2)),
+                                    int(self.boardSize / 2 + 75) - (self.moveIndicator.height() / 2))
 
         # Set up pause overlay
         self.pauseBackground.setAlignment(Qt.AlignCenter)
         self.pauseBackground.resize(self.boardSize, self.boardSize)
-        self.pauseBackground.setStyleSheet('background-color: rgba(0, 0, 0, 150)')
+        self.pauseBackground.setStyleSheet('background-color: rgba(0, 0, 0, 200)')
         self.pauseBackground.move(0, 0)
         self.pauseBackground.hide()
 
@@ -385,7 +439,7 @@ class chessBoardWindow(QMainWindow):
         font.setPixelSize(self.skipButton.height() * 0.6)
         self.skipButton.setFont(font)
         self.skipButton.move(int(self.boardSize - ((self.skipButton.width() - self.moveIndicator.width()) / 2)),
-                             int(self.boardSize / 2 + 250) - (self.skipButton.height() / 2))
+                             int(self.boardSize / 2 + 225) - (self.skipButton.height() / 2))
 
         # Set up pause button
         self.pauseButton.clicked.connect(self.pauseButtonClicked)
@@ -394,7 +448,7 @@ class chessBoardWindow(QMainWindow):
         font.setPixelSize(self.pauseButton.height() * 0.6)
         self.pauseButton.setFont(font)
         self.pauseButton.move(int(self.boardSize - ((self.pauseButton.width() - self.moveIndicator.width()) / 2)),
-                             int(self.boardSize / 2 + 200) - (self.pauseButton.height() / 2))
+                             int(self.boardSize / 2 + 175) - (self.pauseButton.height() / 2))
 
         # Set up reset button
         self.resetButton.clicked.connect(self.resetBoard)
@@ -415,7 +469,7 @@ class chessBoardWindow(QMainWindow):
         self.resetButtonPersistent.setFont(font)
         self.resetButtonPersistent.move(int(self.boardSize - ((self.resetButtonPersistent.width() -
                                                                self.moveIndicator.width()) / 2)),
-                                        int(self.boardSize / 2 - 250) - (self.resetButton.height() / 2))
+                                        int(self.boardSize / 2 + 275) - (self.resetButton.height() / 2))
 
         # Set up Rolled Die components
         self.rolledDie.resize(75, 75)
@@ -434,7 +488,7 @@ class chessBoardWindow(QMainWindow):
         self.specialDie.setScaledContents(True)
         self.specialDie.move(int((self.boardSize / 2) - (self.specialDie.width() / 2) + 150),
                              int((self.boardSize / 2) + 50))
-        pixmap = QPixmap('../img/die1')
+        pixmap = QPixmap('../img/disadvantage')
         self.specialDie.setPixmap(pixmap)
         self.specialDie.hide()
 
@@ -544,6 +598,7 @@ class chessBoardWindow(QMainWindow):
                         label = QLabel(self)
                     # Set the image based on the array element.
                     label.resize(75, 75)
+
                     pixmap = QPixmap('../img/' + tile)
                     label.setPixmap(pixmap)
                     label.setScaledContents(True)
@@ -894,7 +949,7 @@ class chessBoardWindow(QMainWindow):
 
                 # Move the object through the array to match its movements on the gui.
                 self.moveOverGui(fromPos, toPos, self.piecePos[fromPos[1]][fromPos[0]].pieceCommander)
-                self.moveInfoIndicator.setText("")
+                self.moveInfoIndicator.setText("Piece Moved\nFrom: " + chr(fromPos[0] + 65) + str(8 - fromPos[1]) + "\nTo: " + chr(toPos[0] + 65) + str(8 - toPos[1]))
 
                 # Highlight the path of the piece
                 self.highlightPathway(path, False)
@@ -903,7 +958,9 @@ class chessBoardWindow(QMainWindow):
                     self.piecePos[fromPos[1]][fromPos[0]].pieceType == "knight" and \
                     self.piecePos[fromPos[1]][fromPos[0]].knightSpecial:
                 # Try to capture a piece
-                if not self.piecePos[fromPos[1]][fromPos[0]].pieceColor == self.piecePos[toPos[1]][toPos[0]].pieceColor:
+                if not self.piecePos[fromPos[1]][fromPos[0]].pieceColor == self.piecePos[toPos[1]][toPos[0]].pieceColor\
+                        and not self.piecePos[toPos[1]][toPos[0]].pieceType == "king" and not \
+                        self.piecePos[toPos[1]][toPos[0]].pieceType == "queen":
                     if self.checkAttackRange(fromPos, toPos, self.piecePos[fromPos[1]][fromPos[0]].rules):
                         # Snap the piece back to its start position when the person releases it.
                         self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize),
@@ -932,12 +989,8 @@ class chessBoardWindow(QMainWindow):
                     # Snap the piece back to its start position when the person releases it.
                     self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize),
                                                                int(fromPos[1] * self.tileSize))
-                    if not self.piecePos[fromPos[1]][fromPos[0]].pieceColor == \
-                           self.piecePos[toPos[1]][toPos[0]].pieceColor:
-                        self.moveInfoIndicator.setText("No Command Point\nFor This Piece")
-                    else:
-                        self.moveInfoIndicator.setText("Invalid Move")
-                        print("BAD MOVE" + str(fromPos) + str(toPos))
+                    self.moveInfoIndicator.setText("Invalid Move")
+                    print("BAD MOVE" + str(fromPos) + str(toPos))
             # No command point for this piece
             elif not self.piecePos[fromPos[1]][fromPos[0]].knightSpecial and \
                     turnsRemaining[self.piecePos[fromPos[1]][fromPos[0]].pieceCommander] == 0 and \
@@ -962,6 +1015,80 @@ class chessBoardWindow(QMainWindow):
                 self.tileHighlightsPos[tile[1]][tile[0]].show()
             else:
                 self.tileHighlightsPos[tile[0]][tile[1]].show()
+
+    def highlightPossibleMoves(self, xIter, yIter):
+        piece = self.piecePos[yIter][xIter]
+        possibleMoves = []
+
+        # If the piece's commander has a command point remaining...
+        if (self.turn == 0 and
+        self.getWhiteTurnsRemaining()[piece.pieceCommander] == 1) \
+            or (self.turn == 1 and
+                self.getBlackTurnsRemaining()[piece.pieceCommander] == 1):
+            if piece.pieceType == "knight":
+                self.checkAppendMoves(-5, 6, xIter, yIter, piece, possibleMoves)
+            elif piece.pieceType == "king":
+                self.checkAppendMoves(-3, 4, xIter, yIter, piece, possibleMoves)
+            elif piece.pieceType == "queen":
+                self.checkAppendMoves(-3, 4, xIter, yIter, piece, possibleMoves)
+            elif piece.pieceType == "bishop":
+                self.checkAppendMoves(-1, 2, xIter, yIter, piece, possibleMoves)
+            elif piece.pieceType == "rook":
+                self.checkAppendMoves(-3, 4, xIter, yIter, piece, possibleMoves)
+            else:
+                self.checkAppendMoves(-1, 2, xIter, yIter, piece, possibleMoves)
+        # If the piece is a knight and has a special move remaining...
+        elif piece.pieceType == "knight" and piece.knightSpecial:
+            for yCord in range(-1, 2):
+                for xCord in range(-1, 2):
+                    # Make sure we are not out of bounds.
+                    if not (xCord == 0 and yCord == 0) and \
+                            not (xIter + xCord < 0 or xIter + xCord > 7) and \
+                            not (yIter + yCord < 0 or yIter + yCord > 7):
+                        # If there is a piece to attack...
+                        if piece.rules.checkAttackInRange(self, [xIter, yIter], [xIter + xCord, yIter + yCord],
+                                                          piece.pieceColor) and not \
+                                self.piecePos[yIter + yCord][xIter + xCord] == "0" and not \
+                                piece.pieceColor == self.piecePos[yIter + yCord][xIter + xCord].pieceColor and not \
+                                self.piecePos[yIter + yCord][xIter + xCord].pieceType == "king" and not \
+                                self.piecePos[yIter + yCord][xIter + xCord].pieceType == "queen":
+                            # Append move.
+                            possibleMoves.append([yIter + yCord, xIter + xCord])
+
+        self.highlightPathway(possibleMoves, False)
+
+    # Check if the move should be added.
+    def checkAppendMoves(self, lowerMove, upperMove, xIter, yIter, piece, possibleMoves):
+        for yCord in range(lowerMove, upperMove):
+            for xCord in range(lowerMove, upperMove):
+                # Make sure we are not out of bounds.
+                if not (xCord == 0 and yCord == 0) and \
+                        not (xIter + xCord < 0 or xIter + xCord > 7) and \
+                        not (yIter + yCord < 0 or yIter + yCord > 7):
+                    # If path is free...
+                    if len(piece.rules.isPathFree(self, [xIter, yIter], [xIter + xCord, yIter + yCord],
+                                                  piece.pieceColor, self.piecePos)):
+                        # Append move.
+                        possibleMoves.append([yIter + yCord, xIter + xCord])
+                    # If there is a piece to attack...
+                    elif piece.rules.checkAttackInRange(self, [xIter, yIter], [xIter + xCord, yIter + yCord],
+                                                        piece.pieceColor) and not \
+                            self.piecePos[yIter + yCord][xIter + xCord] == "0" and not \
+                            piece.pieceColor == self.piecePos[yIter + yCord][xIter + xCord].pieceColor:
+                        # Append move.
+                        possibleMoves.append([yIter + yCord, xIter + xCord])
+
+    def clearHighlights(self):
+        xIter = 0
+        yIter = 0
+
+        for row in self.tileHighlightsPos:
+            for tile in row:
+                self.tileHighlightsPos[yIter][xIter].hide()
+
+                xIter += 1
+            xIter = 0
+            yIter += 1
 
     def checkKnightSpecial(self, fromPos, toPos, rules):
         # Once a knight has moved, see if the knight has an enemy piece in range.
@@ -989,8 +1116,19 @@ class chessBoardWindow(QMainWindow):
         self.setCommanderColor()
 
     def moveOverGui(self, fromPos, toPos, commander):
-        # Snap the piece to the nearest grid point when the person releases it.
-        self.piecePos[fromPos[1]][fromPos[0]].move(int(toPos[0] * self.tileSize), int(toPos[1] * self.tileSize))
+        if self.turn == self.player and not self.playerIsCapturing:
+            # Snap the piece to the nearest grid point when the person releases it.
+            self.piecePos[fromPos[1]][fromPos[0]].move(int(toPos[0] * self.tileSize), int(toPos[1] * self.tileSize))
+        else:
+            self.playerIsCapturing = False
+
+            # Animate over the path when moved by the AI.
+            self.piecePos[fromPos[1]][fromPos[0]].raise_()
+            self.moveOverLine = QPropertyAnimation(self.piecePos[fromPos[1]][fromPos[0]], b"pos")
+            self.moveOverLine.setEasingCurve(QEasingCurve.InOutCubic)
+            self.moveOverLine.setEndValue(QPoint(int(toPos[0] * self.tileSize), int(toPos[1] * self.tileSize)))
+            self.moveOverLine.setDuration(900)
+            self.moveOverLine.start()
 
         self.moveThroughArray(fromPos, toPos, self.piecePos)
 
@@ -1021,18 +1159,6 @@ class chessBoardWindow(QMainWindow):
         # Set and check the moves remaining for the current player.
         self.checkSwitchTurn(commander)
 
-    def clearHighlights(self):
-        xIter = 0
-        yIter = 0
-
-        for row in self.tileHighlightsPos:
-            for tile in row:
-                self.tileHighlightsPos[yIter][xIter].hide()
-
-                xIter += 1
-            xIter = 0
-            yIter += 1
-
     def moveThroughArray(self, fromPos, toPos, pieceList):
         # Copy this piece to destination.
         pieceList[toPos[1]][toPos[0]] = pieceList[fromPos[1]][fromPos[0]]
@@ -1052,7 +1178,9 @@ class chessBoardWindow(QMainWindow):
         self.pauseGame = True
         rollNeeded = rules.minRollNeeded(self, self.piecePos[toPos[1]][toPos[0]].pieceType)
         rollGot = rules.rollCapture(self)
-        self.animThread = AnimationThread(fromPos, toPos, commander, rollNeeded, rollGot, False)
+        self.animThread = AnimationThread.AnimationThread(fromPos, toPos, commander, rollNeeded, rollGot, False)
+        self.animThread.setupAttackArrow.connect(self.drawAttackArrow)
+        self.animThread.fallAttackArrow.connect(self.arrowAnimFall)
         self.animThread.setupAnimation.connect(self.showAnimComponents)
         self.animThread.fallAnimation.connect(self.rolledDieAnimFall)
         self.animThread.updateAnimation.connect(self.rolledDieAnimUpdate)
@@ -1064,7 +1192,9 @@ class chessBoardWindow(QMainWindow):
         self.pauseGame = True
         rollNeeded = rules.minRollNeeded(self, self.piecePos[toPos[1]][toPos[0]].pieceType)
         rollGot = rules.rollCapture(self)
-        self.animThread = AnimationThread(fromPos, toPos, commander, rollNeeded, rollGot, True)
+        self.animThread = AnimationThread.AnimationThread(fromPos, toPos, commander, rollNeeded, rollGot, True)
+        self.animThread.setupAttackArrow.connect(self.drawAttackArrow)
+        self.animThread.fallAttackArrow.connect(self.arrowAnimFall)
         self.animThread.setupAnimation.connect(self.showAnimComponents)
         self.animThread.setupSpecialAnimation.connect(self.showAnimComponentsSpecial)
         self.animThread.fallAnimation.connect(self.rolledDieAnimFall)
@@ -1072,6 +1202,81 @@ class chessBoardWindow(QMainWindow):
         self.animThread.captureAnimation.connect(self.rolledDieAnimCapture)
         self.animThread.finishAnimation.connect(self.rolledDieAnimFinish)
         self.animThread.start()
+
+    def drawAttackArrow(self, fromPos, toPos):
+        # Set the image based on the array element.
+        self.attackArrow.resize(self.tileSize * (abs(toPos[0] - fromPos[0]) + 1),
+                                self.tileSize * (abs(toPos[1] - fromPos[1]) + 1))
+
+        if abs(toPos[0] - fromPos[0]) > abs(toPos[1] - fromPos[1]):
+            self.attackArrowX = self.tileSize * max(1, abs(toPos[0] - fromPos[0]) / 2)
+            self.attackArrowY = self.tileSize * max(1, abs(toPos[0] - fromPos[0]))
+        else:
+            self.attackArrowX = self.tileSize * max(1, abs(toPos[1] - fromPos[1]) / 2)
+            self.attackArrowY = self.tileSize * max(1, abs(toPos[1] - fromPos[1]))
+
+        if toPos[0] == fromPos[0]:
+            if toPos[1] > fromPos[1]:
+                self.attackArrow.move((self.tileSize * fromPos[0]), #- (self.tileSize / 2),
+                                      (self.tileSize * fromPos[1]))
+                self.attackArrowAngle = math.pi
+            else:
+                self.attackArrow.move((self.tileSize * toPos[0]), #- (self.tileSize / 2),
+                                      (self.tileSize * toPos[1]))
+                self.attackArrowAngle = 0
+        elif toPos[1] == fromPos[1]:
+            if toPos[0] < fromPos[0]:
+                self.attackArrow.move((self.tileSize * toPos[0]),
+                                      (self.tileSize * toPos[1])) #- (self.tileSize / 2))
+                self.attackArrowAngle = -(math.pi / 2)
+            else:
+                self.attackArrow.move((self.tileSize * fromPos[0]),
+                                      (self.tileSize * fromPos[1])) #- (self.tileSize / 2))
+                self.attackArrowAngle = (math.pi / 2)
+        elif toPos[0] < fromPos[0] and toPos[1] > fromPos[1]:
+            self.attackArrow.move((self.tileSize * toPos[0]),
+                                  (self.tileSize * fromPos[1]))
+            self.attackArrowAngle = math.atan(-(abs(toPos[1] - fromPos[1]) / abs(toPos[0] - fromPos[0]))) - (math.pi / 2)
+        elif toPos[0] < fromPos[0] and toPos[1] < fromPos[1]:
+            self.attackArrow.move((self.tileSize * toPos[0]),
+                                  (self.tileSize * toPos[1]))
+            self.attackArrowAngle = math.atan(abs(toPos[1] - fromPos[1]) / abs(toPos[0] - fromPos[0])) - (math.pi / 2)
+        elif toPos[0] > fromPos[0] and toPos[1] < fromPos[1]:
+            self.attackArrow.move((self.tileSize * fromPos[0]),
+                                  (self.tileSize * toPos[1]))
+            self.attackArrowAngle = math.atan(-(abs(toPos[1] - fromPos[1]) / abs(toPos[0] - fromPos[0]))) + (math.pi / 2)
+        else:
+            self.attackArrow.move((self.tileSize * fromPos[0]),
+                                  (self.tileSize * fromPos[1]))
+            self.attackArrowAngle = math.atan(abs(toPos[1] - fromPos[1]) / abs(toPos[0] - fromPos[0])) + (math.pi / 2)
+
+        self.attackArrowX = self.attackArrowX + 306
+        self.attackArrowY = self.attackArrowY + 306
+
+        pixmap = QPixmap('../img/arrowthingy')
+        pixmap = pixmap.scaled(self.attackArrowX, self.attackArrowY)
+        pixmap = pixmap.transformed(QTransform().rotateRadians(self.attackArrowAngle), Qt.FastTransformation)
+        self.attackArrow.setPixmap(pixmap)
+
+        self.attackArrow.resize(self.attackArrow.width() + 306, self.attackArrow.height() + 306)
+        self.attackArrow.move(int(self.attackArrow.x() - 153), int(self.attackArrow.y() - 306))
+
+        self.attackArrow.setAlignment(Qt.AlignCenter)
+        self.attackArrow.raise_()
+        self.attackArrow.show()
+
+    def arrowAnimFall(self):
+        # Animate the arrow fall
+        self.attackArrowX = self.attackArrowX - 6
+        self.attackArrowY = self.attackArrowY - 6
+
+        pixmap = QPixmap('../img/arrowthingy')
+        pixmap = pixmap.scaled(self.attackArrowX, self.attackArrowY)
+        pixmap = pixmap.transformed(QTransform().rotateRadians(self.attackArrowAngle), Qt.FastTransformation)
+        self.attackArrow.setPixmap(pixmap)
+
+        self.attackArrow.resize(self.attackArrow.width() - 6, self.attackArrow.height() - 6)
+        self.attackArrow.move(int(self.attackArrow.x() + 3), int(self.attackArrow.y() + 6))
 
     def showAnimComponents(self, rollNeeded):
         # Sets up and shows most of the animation components
@@ -1148,6 +1353,9 @@ class chessBoardWindow(QMainWindow):
                 self.setKnightSpecial(fromPos, False)
             # Capture the piece.
             self.capturePiece(toPos)
+            # Check if the player is capturing and set up for animation.
+            if self.turn == self.player:
+                self.playerIsCapturing = True
             # Move the object through the array to match its movements on the gui.
             self.moveOverGui(fromPos, toPos, commander)
             self.moveInfoIndicator.setText("Captured Piece")
@@ -1171,6 +1379,7 @@ class chessBoardWindow(QMainWindow):
         self.specialDie.hide()
         self.neededDie.hide()
         self.rolledDie.hide()
+        self.attackArrow.hide()
 
     def capturePiece(self, target):
         # If the target is a bishop, hand its pieces to the king.
@@ -1207,80 +1416,78 @@ class chessBoardWindow(QMainWindow):
             self.resetButton.raise_()
 
         # This deletes a piece from the board.
-        self.piecePos[target[1]][target[0]].deleteLater()
-        self.piecePos[target[1]][target[0]] = "0"
+        if not self.piecePos[target[1]][target[0]] == "0" and self.piecePos[target[1]][target[0]].pieceColor == 0:
+            self.piecePos[target[1]][target[0]].resize(self.tileSize / 2, self.tileSize / 2)
+            self.piecePos[target[1]][target[0]].raise_()
+            self.whitePiecesCaptured.append(self.piecePos[target[1]][target[0]])
+            self.piecePos[target[1]][target[0]] = "0"
+            self.updateWhiteCapturedPieces()
+        elif not self.piecePos[target[1]][target[0]] == "0" and self.piecePos[target[1]][target[0]].pieceColor == 1:
+            self.piecePos[target[1]][target[0]].resize(self.tileSize / 2, self.tileSize / 2)
+            self.piecePos[target[1]][target[0]].raise_()
+            self.blackPiecesCaptured.append(self.piecePos[target[1]][target[0]])
+            self.piecePos[target[1]][target[0]] = "0"
+            self.updateBlackCapturedPieces()
 
+        # Check to make sure all knight specials are valid
+        self.recheckKnightSpecials()
 
-class AnimationThread(QThread):
-    setupAnimation = pyqtSignal(int)
-    setupSpecialAnimation = pyqtSignal()
-    fallAnimation = pyqtSignal()
-    updateAnimation = pyqtSignal()
-    captureAnimation = pyqtSignal(int, int, bool)
-    finishAnimation = pyqtSignal(list, list, int, int, int)
+    def recheckKnightSpecials(self):
+        xIter = 0
+        yIter = 0
 
-    def __init__(self, fromPos, toPos, commander, rollNeeded, rollGot, special):
-        super(AnimationThread, self).__init__()
+        for row in self.piecePos:
+            for tile in row:
+                if not self.piecePos[yIter][xIter] == "0" and self.piecePos[yIter][xIter].pieceType == "knight" and \
+                        self.piecePos[yIter][xIter].knightSpecial:
+                    if not self.checkKnightSpecial([xIter, yIter], [xIter, yIter], self.piecePos[yIter][xIter].rules):
+                        self.setKnightSpecial([xIter, yIter], False)
+                xIter += 1
+            xIter = 0
+            yIter += 1
 
-        self.fromPos = fromPos
-        self.toPos = toPos
-        self.commander = commander
-        self.rollNeeded = rollNeeded
-        self.rollGot = rollGot
-        self.special = special
-        self.running = True
+    def updateWhiteCapturedPieces(self):
+        xIter = 0
+        for piece in self.whitePiecesCaptured:
+            if len(self.whitePiecesCaptured) < 9:
+                piece.move(int(self.boardSize - ((piece.width() - self.moveIndicator.width()) / 2) + (
+                            ((piece.width() * 0.70) * (len(self.whitePiecesCaptured) - 1)) / 2) - (
+                                           (piece.width() * 0.70) * xIter)),
+                           int(self.boardSize / 2 - 150) - (piece.height() / 2))
+            else:
+                if xIter < 8:
+                    piece.move(int(self.boardSize - ((piece.width() - self.moveIndicator.width()) / 2) + (
+                            ((piece.width() * 0.70) * 7) / 2) - (
+                                           (piece.width() * 0.70) * xIter)),
+                               int(self.boardSize / 2 - 150) - (piece.height() / 2))
+                else:
+                    piece.move(int(self.boardSize - ((piece.width() - self.moveIndicator.width()) / 2) + (
+                                ((piece.width() * 0.70) * (len(self.whitePiecesCaptured) + 7)) / 2) - (
+                                               (piece.width() * 0.70) * xIter)),
+                               int((self.boardSize / 2 - 150) + piece.height()) - (piece.height() / 2))
+            xIter += 1
 
-    def stop(self):
-        self.running = False
+    def updateBlackCapturedPieces(self):
+        xIter = 0
+        for piece in self.blackPiecesCaptured:
+            if len(self.blackPiecesCaptured) < 9:
+                piece.move(int(self.boardSize - ((piece.width() - self.moveIndicator.width()) / 2) + (
+                            ((piece.width() * 0.70) * (len(self.blackPiecesCaptured) - 1)) / 2) - (
+                                           (piece.width() * 0.70) * xIter)),
+                           int(self.boardSize / 2 - 250) - (piece.height() / 2))
+            else:
+                if xIter < 8:
+                    piece.move(int(self.boardSize - ((piece.width() - self.moveIndicator.width()) / 2) + (
+                            ((piece.width() * 0.70) * 7) / 2) - (
+                                           (piece.width() * 0.70) * xIter)),
+                               int(self.boardSize / 2 - 250) - (piece.height() / 2))
+                else:
+                    piece.move(int(self.boardSize - ((piece.width() - self.moveIndicator.width()) / 2) + (
+                                ((piece.width() * 0.70) * (len(self.blackPiecesCaptured) + 7)) / 2) - (
+                                               (piece.width() * 0.70) * xIter)),
+                               int((self.boardSize / 2 - 250) + piece.height()) - (piece.height() / 2))
 
-    def run(self):
-        if self.running:
-            sleep(2)
-
-        if self.running:
-            self.setupAnimation.emit(self.rollNeeded)
-
-            if self.special:
-                self.setupSpecialAnimation.emit()
-
-            iterator = 0
-
-        # Do the fall animation
-        while self.running:
-            self.fallAnimation.emit()
-            sleep(0.0001)
-            if iterator >= 50:
-                break
-            iterator += 1
-
-        if self.running:
-            iterator = 0
-            speed = 0.1
-            sleep(speed)
-
-        # Do the roll animation
-        while self.running:
-            self.updateAnimation.emit()
-            if iterator % 10 == 0 or iterator % 15 == 0 or iterator % 17 == 0 or iterator % 18 == 0 or \
-                    iterator % 19 == 0:
-                speed += 0.1
-            if iterator >= 20:
-                break
-            iterator += 1
-
-            sleep(speed)
-
-        if self.running:
-            if self.special:
-                self.rollGot -= 1
-
-            # Show the actual roll
-            self.captureAnimation.emit(self.rollNeeded, self.rollGot, self.special)
-            sleep(3)
-
-        if self.running:
-            # Clean up
-            self.finishAnimation.emit(self.fromPos, self.toPos, self.commander, self.rollNeeded, self.rollGot)
+            xIter += 1
 
 
 def chessBoard():

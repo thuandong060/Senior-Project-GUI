@@ -96,9 +96,9 @@ class AiMove(QThread):
         if self.isRunning:
             elapsedTime = datetime.now() - self.startTime
 
-            # If 2 seconds have not elapsed, sleep until two seconds have passed.
-            if (elapsedTime.seconds + (elapsedTime.microseconds / 1000000)) < 2.000:
-                sleep(2 - (elapsedTime.seconds + (elapsedTime.microseconds / 1000000)))
+            # If 2.5 seconds have not elapsed, sleep until two seconds have passed.
+            if (elapsedTime.seconds + (elapsedTime.microseconds / 1000000)) < 2.900:
+                sleep(2.9 - (elapsedTime.seconds + (elapsedTime.microseconds / 1000000)))
 
             # Check which move of the three is the best.
             if not self.kingMove == 0 and self.movesRemaining[1] == 1:
@@ -134,7 +134,7 @@ class AiMove(QThread):
 
         # If the game is paused, wait.
         while self.isRunning and self.kingInterface.getPaused():
-            sleep(2)
+            sleep(2.9)
 
         if self.isRunning:
             # If no move was chosen, skip the turn.
@@ -173,7 +173,7 @@ class AiMove(QThread):
                 if self.isRunning:
                     self.moveToBishop.emit(bishopMove)
 
-                sleep(2)
+                sleep(2.9)
 
                 if self.isRunning:
                     self.moveDetermined.emit(self.overallBestMove)
