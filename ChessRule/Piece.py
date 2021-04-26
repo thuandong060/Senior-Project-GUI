@@ -50,6 +50,8 @@ class Piece(QLabel):
                 self.labelPos = ((ev.globalPos() - self.parent().pos()) - QPoint(0, 30))
                 self.startingPosition = [int(self.labelPos.x() / self.parent().tileSize),
                                          int(self.labelPos.y() / self.parent().tileSize)]
+                self.parent().clearHighlights()
+                self.parent().highlightPossibleMoves(self.startingPosition[0], self.startingPosition[1])
                 self.raise_()
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
@@ -120,5 +122,7 @@ class Piece(QLabel):
                                    int(self.labelPos.y() / self.parent().tileSize)]
 
             # self.rules.isPathFree(self, self.startingPosition, self.endingPosition, self.pieceColor, self.parent().piecePos)
+
+            self.parent().clearHighlights()
 
             self.parent().movePiece(self.startingPosition, self.endingPosition)
