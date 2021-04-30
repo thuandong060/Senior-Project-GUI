@@ -1,15 +1,18 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
-from PyQt5.QtGui import QPixmap, QFont, QTransform
+from PyQt5.QtGui import QPixmap, QFont, QTransform, QIcon
 from PyQt5.QtCore import Qt, QPropertyAnimation, QPoint, QEasingCurve
 from ChessRule import Piece
 from source import BoardInterface
 from source import AiMove
 from source import PieceMoveInfo
 from source import AnimationThread
+import resources
 import math
 import random
 
+# pyinstaller.exe --onefile --windowed --icon=appIcon.ico source\Main.py
+# pyrcc5 -o resources.py resources.qrc
 
 class chessBoardWindow(QMainWindow):
     def __init__(self):
@@ -20,9 +23,7 @@ class chessBoardWindow(QMainWindow):
         self.aiThread = 0
 
         # AI interface
-        self.kingInterface = BoardInterface.BoardInterface(self)
-        self.bishopInterface1 = BoardInterface.BoardInterface(self)
-        self.bishopInterface2 = BoardInterface.BoardInterface(self)
+        self.boardInterface = BoardInterface.BoardInterface(self)
 
         # Line animation
         self.moveOverLine = 0
@@ -42,6 +43,7 @@ class chessBoardWindow(QMainWindow):
         # This block sets up the window properties.
         self.setGeometry(400, 200, 300, 300)
         self.setWindowTitle('Chessboard')
+        self.setWindowIcon(QIcon(':/res/img/wr.png'))
 
         # Choose side text
         self.chooseSideText = QLabel(self)
@@ -275,20 +277,10 @@ class chessBoardWindow(QMainWindow):
                                             "\nCenter Corp: " + str(self.whiteTurnsRemaining[1]) +
                                             "\nRight Corp: " + str(self.whiteTurnsRemaining[2]))
 
-        self.kingInterface.updatePiecePosCopy(self.getPiecePos())
-        self.kingInterface.updateWhiteTurnsRemaining()
-        self.kingInterface.updateBlackTurnsRemaining()
-        self.kingInterface.updateKingPositions()
-
-        self.bishopInterface1.updatePiecePosCopy(self.getPiecePos())
-        self.bishopInterface1.updateWhiteTurnsRemaining()
-        self.bishopInterface1.updateBlackTurnsRemaining()
-        self.bishopInterface1.updateKingPositions()
-
-        self.bishopInterface2.updatePiecePosCopy(self.getPiecePos())
-        self.bishopInterface2.updateWhiteTurnsRemaining()
-        self.bishopInterface2.updateBlackTurnsRemaining()
-        self.bishopInterface2.updateKingPositions()
+        self.boardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.boardInterface.updateWhiteTurnsRemaining()
+        self.boardInterface.updateBlackTurnsRemaining()
+        self.boardInterface.updateKingPositions()
 
         self.showSideChoice()
 
@@ -488,7 +480,7 @@ class chessBoardWindow(QMainWindow):
         self.specialDie.setScaledContents(True)
         self.specialDie.move(int((self.boardSize / 2) - (self.specialDie.width() / 2) + 150),
                              int((self.boardSize / 2) + 50))
-        pixmap = QPixmap('../img/disadvantage')
+        pixmap = QPixmap(':/res/img/disadvantage.png')
         self.specialDie.setPixmap(pixmap)
         self.specialDie.hide()
 
@@ -599,7 +591,7 @@ class chessBoardWindow(QMainWindow):
                     # Set the image based on the array element.
                     label.resize(75, 75)
 
-                    pixmap = QPixmap('../img/' + tile)
+                    pixmap = QPixmap(':/res/img/' + tile + '.png')
                     label.setPixmap(pixmap)
                     label.setScaledContents(True)
                     label.move(int(xIter * self.tileSize), int(yIter * self.tileSize))
@@ -612,20 +604,10 @@ class chessBoardWindow(QMainWindow):
             xIter = 0
             yIter += 1
 
-        self.kingInterface.updatePiecePosCopy(self.getPiecePos())
-        self.kingInterface.updateWhiteTurnsRemaining()
-        self.kingInterface.updateBlackTurnsRemaining()
-        self.kingInterface.updateKingPositions()
-
-        self.bishopInterface1.updatePiecePosCopy(self.getPiecePos())
-        self.bishopInterface1.updateWhiteTurnsRemaining()
-        self.bishopInterface1.updateBlackTurnsRemaining()
-        self.bishopInterface1.updateKingPositions()
-
-        self.bishopInterface2.updatePiecePosCopy(self.getPiecePos())
-        self.bishopInterface2.updateWhiteTurnsRemaining()
-        self.bishopInterface2.updateBlackTurnsRemaining()
-        self.bishopInterface2.updateKingPositions()
+        self.boardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.boardInterface.updateWhiteTurnsRemaining()
+        self.boardInterface.updateBlackTurnsRemaining()
+        self.boardInterface.updateKingPositions()
 
     def showSideChoice(self):
         self.skipButton.clicked.disconnect(self.skipButtonClicked)
@@ -715,7 +697,7 @@ class chessBoardWindow(QMainWindow):
                     elif tile.pieceType == "bishop":
                         type = "b"
 
-                    pixmap = QPixmap('../img/' + color + type + outline)
+                    pixmap = QPixmap(':/res/img/' + color + type + outline + '.png')
                     tile.setPixmap(pixmap)
 
     def addHighlightBoardComponents(self):
@@ -730,7 +712,7 @@ class chessBoardWindow(QMainWindow):
                 # Add the highlight image
                 label = QLabel(self)
                 label.resize(75, 75)
-                pixmap = QPixmap('../img/yt')
+                pixmap = QPixmap(':/res/img/yt.png')
                 label.setPixmap(pixmap)
                 label.setScaledContents(True)
                 label.move(int(xIter * self.tileSize), int(yIter * self.tileSize))
@@ -802,6 +784,8 @@ class chessBoardWindow(QMainWindow):
     def switchTurn(self):
         # Switch the turn to the other person and update the UI.
         if not self.pauseGame:
+            self.boardInterface.updateTurnCount()
+
             self.knightSpecialMovesRemaining = 0
 
             self.whiteTurnsRemaining = [0, 0, 0]
@@ -811,14 +795,8 @@ class chessBoardWindow(QMainWindow):
                 self.checkBishopsRemaining(0)
                 self.checkBishopsRemaining(1)
 
-                self.kingInterface.updateWhiteTurnsRemaining()
-                self.kingInterface.updateBlackTurnsRemaining()
-
-                self.bishopInterface1.updateWhiteTurnsRemaining()
-                self.bishopInterface1.updateBlackTurnsRemaining()
-
-                self.bishopInterface2.updateWhiteTurnsRemaining()
-                self.bishopInterface2.updateBlackTurnsRemaining()
+                self.boardInterface.updateWhiteTurnsRemaining()
+                self.boardInterface.updateBlackTurnsRemaining()
 
             if self.turn == 0:
                 self.turn = 1
@@ -846,8 +824,7 @@ class chessBoardWindow(QMainWindow):
                 self.aiMoveThread(self.blackTurnsRemaining, 1)
 
     def aiMoveThread(self, movesRemaining, color):
-        self.aiThread = AiMove.AiMove(self.kingInterface, self.bishopInterface1, self.bishopInterface2,
-                                      movesRemaining, color)
+        self.aiThread = AiMove.AiMove(self.boardInterface, movesRemaining, color)
         self.aiThread.moveDetermined.connect(self.aiMoveThreadFinish)
         self.aiThread.moveToBishop.connect(self.aiMoveThreadBishop)
         self.aiThread.aiSkipDetermined.connect(self.aiMoveThreadSkip)
@@ -855,6 +832,7 @@ class chessBoardWindow(QMainWindow):
 
     def aiMoveThreadFinish(self, move):
         self.aiWasRunning = False
+        print("Move Piece: " + str(self.piecePos[move.getFromPos()[1]][move.getFromPos()[0]].pieceType) + " / Move from: " + str(move.getFromPos()) + " To: " + str(move.getToPos()))
         self.movePiece(move.getFromPos(), move.getToPos())
 
     def aiMoveThreadBishop(self, move):
@@ -1141,20 +1119,10 @@ class chessBoardWindow(QMainWindow):
             else:
                 print("From: " + str(move.getFromPos()) + " To: " + str(move.getToPos()) + "")
 
-        self.kingInterface.updatePiecePosCopy(self.getPiecePos())
-        self.kingInterface.updateWhiteTurnsRemaining()
-        self.kingInterface.updateBlackTurnsRemaining()
-        self.kingInterface.updateKingPositions()
-
-        self.bishopInterface1.updatePiecePosCopy(self.getPiecePos())
-        self.bishopInterface1.updateWhiteTurnsRemaining()
-        self.bishopInterface1.updateBlackTurnsRemaining()
-        self.bishopInterface1.updateKingPositions()
-
-        self.bishopInterface2.updatePiecePosCopy(self.getPiecePos())
-        self.bishopInterface2.updateWhiteTurnsRemaining()
-        self.bishopInterface2.updateBlackTurnsRemaining()
-        self.bishopInterface2.updateKingPositions()
+        self.boardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.boardInterface.updateWhiteTurnsRemaining()
+        self.boardInterface.updateBlackTurnsRemaining()
+        self.boardInterface.updateKingPositions()
 
         # Set and check the moves remaining for the current player.
         self.checkSwitchTurn(commander)
@@ -1253,7 +1221,7 @@ class chessBoardWindow(QMainWindow):
         self.attackArrowX = self.attackArrowX + 306
         self.attackArrowY = self.attackArrowY + 306
 
-        pixmap = QPixmap('../img/arrowthingy')
+        pixmap = QPixmap(':/res/img/arrowthingy.png')
         pixmap = pixmap.scaled(self.attackArrowX, self.attackArrowY)
         pixmap = pixmap.transformed(QTransform().rotateRadians(self.attackArrowAngle), Qt.FastTransformation)
         self.attackArrow.setPixmap(pixmap)
@@ -1270,7 +1238,7 @@ class chessBoardWindow(QMainWindow):
         self.attackArrowX = self.attackArrowX - 6
         self.attackArrowY = self.attackArrowY - 6
 
-        pixmap = QPixmap('../img/arrowthingy')
+        pixmap = QPixmap(':/res/img/arrowthingy.png')
         pixmap = pixmap.scaled(self.attackArrowX, self.attackArrowY)
         pixmap = pixmap.transformed(QTransform().rotateRadians(self.attackArrowAngle), Qt.FastTransformation)
         self.attackArrow.setPixmap(pixmap)
@@ -1294,12 +1262,12 @@ class chessBoardWindow(QMainWindow):
         self.rolledDieText.show()
         self.neededDie.raise_()
         self.neededDie.show()
-        pixmap = QPixmap('../img/die' + str(rollNeeded))
+        pixmap = QPixmap(':/res/img/die' + str(rollNeeded) + '.png')
         self.neededDie.setPixmap(pixmap)
         self.rolledDie.raise_()
         self.rolledDie.show()
         number = random.randint(1, 6)
-        pixmap = QPixmap('../img/die' + str(number))
+        pixmap = QPixmap(':/res/img/die' + str(number) + '.png')
         self.rolledDie.setPixmap(pixmap)
         self.rolledDie.resize(self.rolledDie.width() + 255, self.rolledDie.height() + 255)
         self.rolledDie.move(int((self.boardSize / 2) - (self.rolledDie.width() / 2)), int(self.rolledDie.y() - 255))
@@ -1325,16 +1293,16 @@ class chessBoardWindow(QMainWindow):
                 number -= 1
             else:
                 number += 1
-        pixmap = QPixmap('../img/die' + str(number))
+        pixmap = QPixmap(':/res/img/die' + str(number) + '.png')
         self.previousRoll = number
         self.rolledDie.setPixmap(pixmap)
 
     def rolledDieAnimCapture(self, rollNeeded, rollGot, special):
         # Show the final verdict of the roll
         if special:
-            pixmap = QPixmap('../img/die' + str(rollGot + 1))
+            pixmap = QPixmap(':/res/img/die' + str(rollGot + 1) + '.png')
         else:
-            pixmap = QPixmap('../img/die' + str(rollGot))
+            pixmap = QPixmap(':/res/img/die' + str(rollGot) + '.png')
         self.rolledDie.setPixmap(pixmap)
         if rollGot >= rollNeeded:
             self.captureRollText.setText("Attack Succeeded!")

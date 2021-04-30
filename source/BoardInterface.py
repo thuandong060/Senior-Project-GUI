@@ -38,6 +38,8 @@ class BoardInterface:
         self.blackBishop1PieceCount = 0
         self.blackBishop2PieceCount = 0
 
+        self.turnCount = 0
+
         # TODO return 0 if not game over and 1 is black win and 2 white win and 3 is tie
     def isGameOver(self):
         return 0
@@ -357,13 +359,17 @@ class BoardInterface:
             xIter = 0
             yIter += 1
 
-    # Returns how many moves the white has remaining.
+    # Updates how many moves the white has remaining.
     def updateWhiteTurnsRemaining(self):
         self.whiteMovesRemaining = self.mainBoard.getWhiteTurnsRemaining().copy()
 
-    # Returns how many moves the black has remaining.
+    # Updates how many moves the black has remaining.
     def updateBlackTurnsRemaining(self):
         self.blackMovesRemaining = self.mainBoard.getBlackTurnsRemaining().copy()
+
+    # Updates the number of turns that have elapsed in the game.
+    def updateTurnCount(self):
+        self.turnCount += 1
 
     # Returns who's turn it is.
     def getTurn(self):

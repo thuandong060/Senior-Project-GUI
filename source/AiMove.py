@@ -11,7 +11,7 @@ class AiMove(QThread):
     moveToBishop = pyqtSignal(PieceMoveInfo.PieceMoveInfo)
     aiSkipDetermined = pyqtSignal()
 
-    def __init__(self, kingInterface, bishopInterface1, bishopInterface2, movesRemaining, color):
+    def __init__(self, boardInterface, movesRemaining, color):
         super(AiMove, self).__init__()
         self.overallBestMove = 0
         self.kingAi = 0
@@ -23,9 +23,7 @@ class AiMove(QThread):
         self.kingAiComplete = False
         self.bishopAi1Complete = False
         self.bishopAi2Complete = False
-        self.kingInterface = kingInterface
-        self.bishopInterface1 = bishopInterface1
-        self.bishopInterface2 = bishopInterface2
+        self.boardInterface = boardInterface
         self.movesRemaining = movesRemaining
         self.color = color
         self.sendToBishop = False
@@ -68,23 +66,23 @@ class AiMove(QThread):
 
     def nextMove(self):
         if self.isRunning:
-            print("White: " + str(self.kingInterface.whiteKingPosition) + " " + str(self.kingInterface.whiteBishop1Position) + " " + str(self.kingInterface.whiteBishop2Position) +
-                  "\n Black: "  + str(self.kingInterface.blackKingPosition) + " " + str(self.kingInterface.blackBishop1Position) + " " + str(self.kingInterface.blackBishop2Position))
+            print("White: " + str(self.boardInterface.whiteKingPosition) + " " + str(self.boardInterface.whiteBishop1Position) + " " + str(self.boardInterface.whiteBishop2Position) +
+                  "\n Black: "  + str(self.boardInterface.blackKingPosition) + " " + str(self.boardInterface.blackBishop1Position) + " " + str(self.boardInterface.blackBishop2Position))
 
             # Setup the threads for the three AI parts.
             self.startTime = datetime.now()
 
-            self.kingAi = AiBrain.AiBrain(self.kingInterface, self.color, 1)
+            self.kingAi = AiBrain.AiBrain(self.boardInterface, self.color, 1)
             self.kingAi.foundBestMove.connect(self.kingAiFinished)
             self.kingAi.noMove.connect(self.kingAiNoMove)
             self.kingAi.start()
 
-            self.bishopAi1 = AiBrain.AiBrain(self.bishopInterface1, self.color, 0)
+            self.bishopAi1 = AiBrain.AiBrain(self.boardInterface, self.color, 0)
             self.bishopAi1.foundBestMove.connect(self.bishopAi1Finished)
             self.bishopAi1.noMove.connect(self.bishopAi1NoMove)
             self.bishopAi1.start()
 
-            self.bishopAi2 = AiBrain.AiBrain(self.bishopInterface2, self.color, 2)
+            self.bishopAi2 = AiBrain.AiBrain(self.boardInterface, self.color, 2)
             self.bishopAi2.foundBestMove.connect(self.bishopAi2Finished)
             self.bishopAi2.noMove.connect(self.bishopAi2NoMove)
             self.bishopAi2.start()
@@ -103,21 +101,22 @@ class AiMove(QThread):
             # Check which move of the three is the best.
             if not self.kingMove == 0 and self.movesRemaining[1] == 1:
                 self.overallBestMove = self.kingMove
-            elif not self.kingMove == 0 and (self.movesRemaining[0] == 1 or self.movesRemaining[2] == 1):
+            elif not self.kingMove == 0 and (self.movesRemaining[0] == 1 or self.movesRemaining[2] == 1) and \
+                    self.boardInterface.turnCount > 1:
                 rollSucceded = False
                 if self.color == 0:
-                    if self.kingInterface.whiteKingPieceCount <= 6:
-                        if random.randint(2, 24) <= self.kingInterface.whiteKingPieceCount:
+                    if self.boardInterface.whiteKingPieceCount <= 6:
+                        if random.randint(2, 24) <= self.boardInterface.whiteKingPieceCount:
                             rollSucceded = True
                     else:
-                        if random.randint(2, 12) <= self.kingInterface.whiteKingPieceCount:
+                        if random.randint(2, 12) <= self.boardInterface.whiteKingPieceCount:
                             rollSucceded = True
                 else:
-                    if self.kingInterface.blackKingPieceCount <= 6:
-                        if random.randint(2, 24) <= self.kingInterface.blackKingPieceCount:
+                    if self.boardInterface.blackKingPieceCount <= 6:
+                        if random.randint(2, 24) <= self.boardInterface.blackKingPieceCount:
                             rollSucceded = True
                     else:
-                        if random.randint(2, 12) <= self.kingInterface.blackKingPieceCount:
+                        if random.randint(2, 12) <= self.boardInterface.blackKingPieceCount:
                             rollSucceded = True
 
                 if rollSucceded:
@@ -133,7 +132,7 @@ class AiMove(QThread):
                 self.overallBestMove = self.bishopMove2
 
         # If the game is paused, wait.
-        while self.isRunning and self.kingInterface.getPaused():
+        while self.isRunning and self.boardInterface.getPaused():
             sleep(2.9)
 
         if self.isRunning:
@@ -144,32 +143,32 @@ class AiMove(QThread):
             elif self.sendToBishop:
                 if self.color == 0:
                     if self.movesRemaining[0] == 1 and self.movesRemaining[2] == 1:
-                        if self.kingInterface.whiteBishop1PieceCount < self.kingInterface.whiteBishop2PieceCount:
+                        if self.boardInterface.whiteBishop1PieceCount < self.boardInterface.whiteBishop2PieceCount:
                             bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                     self.kingInterface.whiteBishop1Position)
+                                                                     self.boardInterface.whiteBishop1Position)
                         else:
                             bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                     self.kingInterface.whiteBishop2Position)
+                                                                     self.boardInterface.whiteBishop2Position)
                     elif self.movesRemaining[0] == 1:
                         bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                 self.kingInterface.whiteBishop1Position)
+                                                                 self.boardInterface.whiteBishop1Position)
                     else:
                         bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                 self.kingInterface.whiteBishop2Position)
+                                                                 self.boardInterface.whiteBishop2Position)
                 else:
                     if self.movesRemaining[0] == 1 and self.movesRemaining[2] == 1:
-                        if self.kingInterface.blackBishop1PieceCount < self.kingInterface.blackBishop2PieceCount:
+                        if self.boardInterface.blackBishop1PieceCount < self.boardInterface.blackBishop2PieceCount:
                             bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                     self.kingInterface.blackBishop1Position)
+                                                                     self.boardInterface.blackBishop1Position)
                         else:
                             bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                     self.kingInterface.blackBishop2Position)
+                                                                     self.boardInterface.blackBishop2Position)
                     elif self.movesRemaining[0] == 1:
                         bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                 self.kingInterface.blackBishop1Position)
+                                                                 self.boardInterface.blackBishop1Position)
                     else:
                         bishopMove = PieceMoveInfo.PieceMoveInfo(self.overallBestMove.getFromPos(),
-                                                                 self.kingInterface.blackBishop2Position)
+                                                                 self.boardInterface.blackBishop2Position)
                 if self.isRunning:
                     self.moveToBishop.emit(bishopMove)
 
