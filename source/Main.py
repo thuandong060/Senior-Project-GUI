@@ -23,7 +23,9 @@ class chessBoardWindow(QMainWindow):
         self.aiThread = 0
 
         # AI interface
-        self.boardInterface = BoardInterface.BoardInterface(self)
+        self.kingBoardInterface = BoardInterface.BoardInterface(self)
+        self.bishop1BoardInterface = BoardInterface.BoardInterface(self)
+        self.bishop2BoardInterface = BoardInterface.BoardInterface(self)
 
         # Line animation
         self.moveOverLine = 0
@@ -233,6 +235,10 @@ class chessBoardWindow(QMainWindow):
         self.gameOver = False
         self.winner = 0
 
+        self.kingBoardInterface.resetTurnCount()
+        self.bishop1BoardInterface.resetTurnCount()
+        self.bishop2BoardInterface.resetTurnCount()
+
         self.moveInfoIndicator.setText("Game Started")
 
         # Delete existing pieces
@@ -277,10 +283,20 @@ class chessBoardWindow(QMainWindow):
                                             "\nCenter Corp: " + str(self.whiteTurnsRemaining[1]) +
                                             "\nRight Corp: " + str(self.whiteTurnsRemaining[2]))
 
-        self.boardInterface.updatePiecePosCopy(self.getPiecePos())
-        self.boardInterface.updateWhiteTurnsRemaining()
-        self.boardInterface.updateBlackTurnsRemaining()
-        self.boardInterface.updateKingPositions()
+        self.kingBoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.kingBoardInterface.updateWhiteTurnsRemaining()
+        self.kingBoardInterface.updateBlackTurnsRemaining()
+        self.kingBoardInterface.updateKingPositions()
+
+        self.bishop1BoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.bishop1BoardInterface.updateWhiteTurnsRemaining()
+        self.bishop1BoardInterface.updateBlackTurnsRemaining()
+        self.bishop1BoardInterface.updateKingPositions()
+
+        self.bishop2BoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.bishop2BoardInterface.updateWhiteTurnsRemaining()
+        self.bishop2BoardInterface.updateBlackTurnsRemaining()
+        self.bishop2BoardInterface.updateKingPositions()
 
         self.showSideChoice()
 
@@ -604,10 +620,20 @@ class chessBoardWindow(QMainWindow):
             xIter = 0
             yIter += 1
 
-        self.boardInterface.updatePiecePosCopy(self.getPiecePos())
-        self.boardInterface.updateWhiteTurnsRemaining()
-        self.boardInterface.updateBlackTurnsRemaining()
-        self.boardInterface.updateKingPositions()
+        self.kingBoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.kingBoardInterface.updateWhiteTurnsRemaining()
+        self.kingBoardInterface.updateBlackTurnsRemaining()
+        self.kingBoardInterface.updateKingPositions()
+
+        self.bishop1BoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.bishop1BoardInterface.updateWhiteTurnsRemaining()
+        self.bishop1BoardInterface.updateBlackTurnsRemaining()
+        self.bishop1BoardInterface.updateKingPositions()
+
+        self.bishop2BoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.bishop2BoardInterface.updateWhiteTurnsRemaining()
+        self.bishop2BoardInterface.updateBlackTurnsRemaining()
+        self.bishop2BoardInterface.updateKingPositions()
 
     def showSideChoice(self):
         self.skipButton.clicked.disconnect(self.skipButtonClicked)
@@ -784,7 +810,9 @@ class chessBoardWindow(QMainWindow):
     def switchTurn(self):
         # Switch the turn to the other person and update the UI.
         if not self.pauseGame:
-            self.boardInterface.updateTurnCount()
+            self.kingBoardInterface.updateTurnCount()
+            self.bishop1BoardInterface.updateTurnCount()
+            self.bishop2BoardInterface.updateTurnCount()
 
             self.knightSpecialMovesRemaining = 0
 
@@ -795,8 +823,14 @@ class chessBoardWindow(QMainWindow):
                 self.checkBishopsRemaining(0)
                 self.checkBishopsRemaining(1)
 
-                self.boardInterface.updateWhiteTurnsRemaining()
-                self.boardInterface.updateBlackTurnsRemaining()
+                self.kingBoardInterface.updateWhiteTurnsRemaining()
+                self.kingBoardInterface.updateBlackTurnsRemaining()
+
+                self.bishop1BoardInterface.updateWhiteTurnsRemaining()
+                self.bishop1BoardInterface.updateBlackTurnsRemaining()
+
+                self.bishop2BoardInterface.updateWhiteTurnsRemaining()
+                self.bishop2BoardInterface.updateBlackTurnsRemaining()
 
             if self.turn == 0:
                 self.turn = 1
@@ -824,7 +858,7 @@ class chessBoardWindow(QMainWindow):
                 self.aiMoveThread(self.blackTurnsRemaining, 1)
 
     def aiMoveThread(self, movesRemaining, color):
-        self.aiThread = AiMove.AiMove(self.boardInterface, movesRemaining, color)
+        self.aiThread = AiMove.AiMove(self.kingBoardInterface, self.bishop1BoardInterface, self.bishop2BoardInterface, movesRemaining, color)
         self.aiThread.moveDetermined.connect(self.aiMoveThreadFinish)
         self.aiThread.moveToBishop.connect(self.aiMoveThreadBishop)
         self.aiThread.aiSkipDetermined.connect(self.aiMoveThreadSkip)
@@ -836,6 +870,9 @@ class chessBoardWindow(QMainWindow):
         self.movePiece(move.getFromPos(), move.getToPos())
 
     def aiMoveThreadBishop(self, move):
+        print("Give Piece to Bishop: " + str(
+            self.piecePos[move.getFromPos()[1]][move.getFromPos()[0]].pieceType) + " / Move from: " + str(
+            move.getFromPos()) + " To: " + str(move.getToPos()))
         self.movePiece(move.getFromPos(), move.getToPos())
 
     def aiMoveThreadSkip(self):
@@ -907,12 +944,8 @@ class chessBoardWindow(QMainWindow):
                     # Snap the piece back to its start position when the person releases it.
                     self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize),
                                                                int(fromPos[1] * self.tileSize))
-                    if not self.piecePos[fromPos[1]][fromPos[0]].pieceColor == \
-                            self.piecePos[toPos[1]][toPos[0]].pieceColor:
-                        self.moveInfoIndicator.setText("No Command Point\nFor This Piece")
-                    else:
-                        self.moveInfoIndicator.setText("Invalid Move")
-                        print("BAD MOVE" + str(fromPos) + str(toPos))
+                    self.moveInfoIndicator.setText("Invalid Move")
+                    print("BAD MOVE1" + str(fromPos) + str(toPos))
             # Else, the player is trying to move to an empty space.
             elif not self.piecePos[fromPos[1]][fromPos[0]].knightSpecial and \
                     not turnsRemaining[self.piecePos[fromPos[1]][fromPos[0]].pieceCommander] == 0 and \
@@ -968,7 +1001,7 @@ class chessBoardWindow(QMainWindow):
                     self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize),
                                                                int(fromPos[1] * self.tileSize))
                     self.moveInfoIndicator.setText("Invalid Move")
-                    print("BAD MOVE" + str(fromPos) + str(toPos))
+                    print("BAD MOVE2" + str(fromPos) + str(toPos))
             # No command point for this piece
             elif not self.piecePos[fromPos[1]][fromPos[0]].knightSpecial and \
                     turnsRemaining[self.piecePos[fromPos[1]][fromPos[0]].pieceCommander] == 0 and \
@@ -977,12 +1010,13 @@ class chessBoardWindow(QMainWindow):
                 self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize),
                                                            int(fromPos[1] * self.tileSize))
                 self.moveInfoIndicator.setText("No Command Point\nFor This Piece")
+                print("BAD MOVE3" + str(fromPos) + str(toPos))
             else:
                 # Snap the piece back to its start position when the person releases it.
                 self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize),
                                                            int(fromPos[1] * self.tileSize))
                 self.moveInfoIndicator.setText("Invalid Move")
-                print("BAD MOVE" + str(fromPos) + str(toPos))
+                print("BAD MOVE4" + str(fromPos) + str(toPos))
         elif not self.piecePos[fromPos[1]][fromPos[0]] == "0":
             # Snap the piece back to its start position when the person releases it.
             self.piecePos[fromPos[1]][fromPos[0]].move(int(fromPos[0] * self.tileSize), int(fromPos[1] * self.tileSize))
@@ -1101,7 +1135,8 @@ class chessBoardWindow(QMainWindow):
             self.playerIsCapturing = False
 
             # Animate over the path when moved by the AI.
-            self.piecePos[fromPos[1]][fromPos[0]].raise_()
+            if not self.gameOver:
+                self.piecePos[fromPos[1]][fromPos[0]].raise_()
             self.moveOverLine = QPropertyAnimation(self.piecePos[fromPos[1]][fromPos[0]], b"pos")
             self.moveOverLine.setEasingCurve(QEasingCurve.InOutCubic)
             self.moveOverLine.setEndValue(QPoint(int(toPos[0] * self.tileSize), int(toPos[1] * self.tileSize)))
@@ -1119,10 +1154,21 @@ class chessBoardWindow(QMainWindow):
             else:
                 print("From: " + str(move.getFromPos()) + " To: " + str(move.getToPos()) + "")
 
-        self.boardInterface.updatePiecePosCopy(self.getPiecePos())
-        self.boardInterface.updateWhiteTurnsRemaining()
-        self.boardInterface.updateBlackTurnsRemaining()
-        self.boardInterface.updateKingPositions()
+        self.kingBoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.kingBoardInterface.updateWhiteTurnsRemaining()
+        self.kingBoardInterface.updateBlackTurnsRemaining()
+        self.kingBoardInterface.updateKingPositions()
+
+        self.bishop1BoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.bishop1BoardInterface.updateWhiteTurnsRemaining()
+        self.bishop1BoardInterface.updateBlackTurnsRemaining()
+        self.bishop1BoardInterface.updateKingPositions()
+
+        self.bishop2BoardInterface.updatePiecePosCopy(self.getPiecePos())
+        self.bishop2BoardInterface.updateWhiteTurnsRemaining()
+        self.bishop2BoardInterface.updateBlackTurnsRemaining()
+        self.bishop2BoardInterface.updateKingPositions()
+
 
         # Set and check the moves remaining for the current player.
         self.checkSwitchTurn(commander)

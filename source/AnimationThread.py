@@ -28,6 +28,9 @@ class AnimationThread(QThread):
 
     def run(self):
         if self.running:
+            sleep(1)
+
+        if self.running:
             self.setupAttackArrow.emit(self.fromPos, self.toPos)
             iterator = 0
 

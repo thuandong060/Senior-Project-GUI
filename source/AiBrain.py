@@ -31,19 +31,50 @@ class AiBrain(QThread):
             return (abs(startPos[1] - endPos[1]) * 10)
 
     def evaluateSingleMove(self, currentBoard, move):
-        overallValue = 0
-        additionKing = 140
-        additionBishop1 = 140
-        additionBishop2 = 140
+        print("Evaluating move FROM: " + str(move.getFromPos()) + " TO: " + str(move.getToPos()))
 
-        if currentBoard.turnCount < 2:
-            overallValue += random.randint(0, 20)
+        overallValue = 0
+        additionKing = 80
+        additionBishop1 = 80
+        additionBishop2 = 80
+        piece = currentBoard.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]]
 
         # Subtract smallest variance
         overallValue -= self.subtractVariance(move.getFromPos(), move.getToPos())
 
+        # Random opening moves
+        if currentBoard.turnCount < 2:
+            if not piece.pieceType == "pawn":
+                overallValue -= 80
+
+            overallValue += random.randint(0, 80)
+        else:
+            if piece.pieceType == "queen":
+                overallValue += 30
+
+            if piece.pieceType == "rook":
+                overallValue += 10
+
+            if piece.pieceType == "knight":
+                overallValue += 20
+
+        # Add bonuses for moving certain piece types
+        if currentBoard.turnCount < 6:
+            if piece.pieceType == "rook":
+                overallValue += 50
+
         # If the piece is white...
-        if currentBoard.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceColor == 0:
+        if piece.pieceColor == 0:
+            # Discourage king and bishops from moving while it has pieces
+            if piece.pieceType == "king":
+                overallValue -= currentBoard.whiteKingPieceCount * 10
+
+            if piece.pieceType == "bishop" and piece.pieceCommander == 0:
+                overallValue -= currentBoard.whiteBishop1PieceCount * 10
+
+            if piece.pieceType == "bishop" and piece.pieceCommander == 2:
+                overallValue -= currentBoard.whiteBishop2PieceCount * 10
+
             # Get value for distance to black king...
             additionKing -= ((abs(currentBoard.blackKingPosition[0] - move.getToPos()[0]) +
                                             abs(currentBoard.blackKingPosition[1] - move.getToPos()[1])) * 10)
@@ -67,6 +98,16 @@ class AiBrain(QThread):
                 additionBishop2 = 0
         # If the piece is black...
         else:
+            # Discourage king and bishops from moving while it has pieces
+            if piece.pieceType == "king":
+                overallValue -= currentBoard.blackKingPieceCount * 10
+
+            if piece.pieceType == "bishop" and piece.pieceCommander == 0:
+                overallValue -= currentBoard.blackBishop1PieceCount * 10
+
+            if piece.pieceType == "bishop" and piece.pieceCommander == 2:
+                overallValue -= currentBoard.blackBishop2PieceCount * 10
+
             # Get value for distance to white king...
             additionKing -= ((abs(currentBoard.whiteKingPosition[0] - move.getToPos()[0]) +
                               abs(currentBoard.whiteKingPosition[1] - move.getToPos()[1])) * 10)
@@ -104,15 +145,13 @@ class AiBrain(QThread):
             bestEval = self.MIN
 
             for move in currentBoard.getAllPossibleMoves(turn, self.callingCommander):
-                eval = 0
-
                 if caller == 0:
-                    eval += self.evaluateSingleMove(currentBoard, move)
+                    eval = self.evaluateSingleMove(currentBoard, move)
                     if eval > bestEval:
                         bestEval = eval
                         moveToMake = move
                 else:
-                    eval += self.evaluateSingleMove(currentBoard, move)
+                    eval = self.evaluateSingleMove(currentBoard, move)
                     if eval >= bestEval:
                         bestEval = eval
                         moveToMake = move

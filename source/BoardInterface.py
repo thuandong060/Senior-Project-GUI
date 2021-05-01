@@ -371,6 +371,10 @@ class BoardInterface:
     def updateTurnCount(self):
         self.turnCount += 1
 
+    # Reset the number of turns that have elapsed in the game.
+    def resetTurnCount(self):
+        self.turnCount = 0
+
     # Returns who's turn it is.
     def getTurn(self):
         return self.mainBoard.getTurn()
