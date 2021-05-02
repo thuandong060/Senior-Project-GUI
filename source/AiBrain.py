@@ -38,6 +38,7 @@ class AiBrain(QThread):
         additionBishop1 = 80
         additionBishop2 = 80
         piece = currentBoard.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]]
+        target = currentBoard.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]]
 
         # Subtract smallest variance
         overallValue -= self.subtractVariance(move.getFromPos(), move.getToPos())
@@ -63,6 +64,79 @@ class AiBrain(QThread):
             if piece.pieceType == "rook":
                 overallValue += 50
 
+        # Add bonuses for attacking a piece
+        if not target == "0":
+            if piece.pieceColor == 0:
+                overallValue += currentBoard.valuePieceDefendAndAttack(piece.pieceType, target.pieceType) * \
+                                ((8 - abs(currentBoard.whiteKingPosition[0] - move.getToPos()[0])) +
+                                 (8 - abs(currentBoard.whiteKingPosition[1] - move.getToPos()[1])))
+            else:
+                overallValue += currentBoard.valuePieceDefendAndAttack(piece.pieceType, target.pieceType) * \
+                                ((8 - abs(currentBoard.blackKingPosition[0] - move.getToPos()[0])) +
+                                 (8 - abs(currentBoard.blackKingPosition[1] - move.getToPos()[1])))
+
+        # Add bonuses for moving to positions that enable attacks
+        # If the piece is a rook...
+        if piece.pieceType == "rook":
+            for yCord in range(-3, 4):
+                for xCord in range(-3, 4):
+                    # Make sure we are not out of bounds.
+                    if not (xCord == 0 and yCord == 0) and \
+                            not (move.getToPos()[0] + xCord < 0 or move.getToPos()[0] + xCord > 7) and \
+                            not (move.getToPos()[1] + yCord < 0 or move.getToPos()[1] + yCord > 7):
+                        if not currentBoard.piecePosCopy[move.getToPos()[1] + yCord][
+                                   move.getToPos()[0] + xCord] == "0" and not piece.pieceColor == \
+                                                                              currentBoard.piecePosCopy[
+                                                                                  move.getToPos()[1] + yCord][
+                                                                                  move.getToPos()[0] + xCord]\
+                                                                              .pieceColor:
+                            if piece.pieceColor == 0:
+                                overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
+                            else:
+                                overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
+        # If the piece is not a rook
+        else:
+            for yCord in range(-1, 2):
+                for xCord in range(-1, 2):
+                    # Make sure we are not out of bounds.
+                    if not (xCord == 0 and yCord == 0) and \
+                            not (move.getToPos()[0] + xCord < 0 or move.getToPos()[0] + xCord > 7) and \
+                            not (move.getToPos()[1] + yCord < 0 or move.getToPos()[1] + yCord > 7):
+                        if not currentBoard.piecePosCopy[move.getToPos()[1] + yCord][
+                                   move.getToPos()[0] + xCord] == "0" and not piece.pieceColor == \
+                                                                              currentBoard.piecePosCopy[
+                                                                                  move.getToPos()[1] + yCord][
+                                                                                  move.getToPos()[0] + xCord]\
+                                                                              .pieceColor:
+                            if piece.pieceColor == 0:
+                                if piece.pieceType == "king" and currentBoard.whiteKingPieceCount > 1:
+                                    overallValue -= (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                else:
+                                    overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
+                            else:
+                                if piece.pieceType == "king" and currentBoard.blackKingPieceCount > 1:
+                                    overallValue -= (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                else:
+                                    overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
+
+        # If king is under attack, take action.
+        if piece.pieceType == "king":
+            for yCord in range(-1, 2):
+                for xCord in range(-1, 2):
+                    # Make sure we are not out of bounds.
+                    if not (xCord == 0 and yCord == 0) and \
+                            not (move.getFromPos()[0] + xCord < 0 or move.getFromPos()[0] + xCord > 7) and \
+                            not (move.getFromPos()[1] + yCord < 0 or move.getFromPos()[1] + yCord > 7):
+                        if not currentBoard.piecePosCopy[move.getFromPos()[1] + yCord][
+                                   move.getFromPos()[0] + xCord] == "0" and not piece.pieceColor == \
+                                                                              currentBoard.piecePosCopy[
+                                                                                  move.getFromPos()[1] + yCord][
+                                                                                  move.getFromPos()[0] + xCord] \
+                                                                              .pieceColor:
+                            if move.getToPos()[0] == move.getFromPos()[0] + xCord and \
+                                    move.getToPos()[1] == move.getFromPos()[1] + yCord:
+                                overallValue *= 1.5
+
         # If the piece is white...
         if piece.pieceColor == 0:
             # Discourage king and bishops from moving while it has pieces
@@ -77,7 +151,7 @@ class AiBrain(QThread):
 
             # Get value for distance to black king...
             additionKing -= ((abs(currentBoard.blackKingPosition[0] - move.getToPos()[0]) +
-                                            abs(currentBoard.blackKingPosition[1] - move.getToPos()[1])) * 10)
+                              abs(currentBoard.blackKingPosition[1] - move.getToPos()[1])) * 10)
 
             # If the black bishop1 exists...
             if not currentBoard.blackBishop1Position == 0:
@@ -164,9 +238,7 @@ class AiBrain(QThread):
 
     def findBestMove(self):
         if self.isRunning:
-            # Set up alpha, beta, and the value of pieces.
-            self.currentBoard.getValuesOfPieces()
-
+            # Find the best move for the commander.
             bestMove = self.evaluateAllMoves(self.currentBoard, self.color, self.color)
 
         if self.isRunning:

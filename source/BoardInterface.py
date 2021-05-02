@@ -19,8 +19,6 @@ class BoardInterface:
         self.blackMovesRemaining = [1, 1, 1]
         self.deletedElements = []
         self.movesMade = []
-        self.valuesOfWhitePieces = 0
-        self.valuesOfBlackPieces = 0
 
         self.whiteKingPosition = 0
         self.whiteBishop1Position = 0
@@ -176,29 +174,6 @@ class BoardInterface:
             xIter = 0
             yIter += 1
 
-    def getValuesOfPieces(self):
-        # Reset the vales for the white and black sides.
-        self.valuesOfWhitePieces = 0
-        self.valuesOfBlackPieces = 0
-        xIter = 0
-        yIter = 0
-
-        # For the tiles on the board...
-        for row in self.piecePosCopy:
-            for tile in row:
-                piece = self.piecePosCopy[yIter][xIter]
-                # If they are a piece...
-                if not piece == "0":
-                    # If they are a white piece, add its value to white's side.
-                    if not piece.pieceColor == 0:
-                        self.valuesOfWhitePieces += self.valuePiece(1, piece.pieceType)
-                    # If they are a white piece, add its value to black's side.
-                    else:
-                        self.valuesOfBlackPieces += self.valuePiece(1, piece.pieceType)
-                xIter += 1
-            xIter = 0
-            yIter += 1
-
     # Determine all moves that are currently possible.
     def movesPossible(self, turn, callingCommander):
         self.allPossibleMoves = []
@@ -284,68 +259,6 @@ class BoardInterface:
         # TODO if possible add special move is to end to turn
         self.movesPossible(turn, callingCommander)
         return self.allPossibleMoves
-
-    # Moves a piece.
-    def makeMove(self, move):
-        if not self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]] == "0":
-            # Remove points as the pieces are removed.
-            if not self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]] == "0":
-                if self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceColor == 0:
-                    self.valuesOfWhitePieces -= self.valuePieceDefendAndAttack(
-                        self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceType,
-                        self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceType)
-                else:
-                    self.valuesOfBlackPieces -= self.valuePieceDefendAndAttack(
-                        self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceType,
-                        self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceType)
-            self.deletedElements.append(self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]])
-            self.movesMade.append(move)
-
-            # Copy this piece to destination.
-            self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]] = \
-                self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]]
-
-            # Remove it from the previous position.
-            self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]] = "0"
-
-            # Remove command point.
-            if self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceColor == 0:
-                self.whiteMovesRemaining[self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceCommander] = 0
-            else:
-                self.blackMovesRemaining[self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceCommander] = 0
-
-    # Moves a piece back.
-    def undoMove(self):
-        move = self.movesMade.pop(len(self.movesMade) - 1)
-        if not self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]] == "0":
-
-            # Copy this piece to destination.
-            self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]] = \
-                self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]]
-
-            # Remove it from the previous position.
-            self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]] = \
-                self.deletedElements.pop(len(self.deletedElements) - 1)
-
-            # Add points as the pieces are added back.
-            if not self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]] == "0":
-                if self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceColor == 0:
-                    self.valuesOfWhitePieces += self.valuePieceDefendAndAttack(
-                        self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceType,
-                        self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceType)
-                else:
-                    self.valuesOfBlackPieces += self.valuePieceDefendAndAttack(
-                        self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceType,
-                        self.piecePosCopy[move.getToPos()[1]][move.getToPos()[0]].pieceType)
-
-            # Remove command point.
-            if not self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].knightSpecial:
-                if self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceColor == 0:
-                    self.whiteMovesRemaining[
-                        self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceCommander] = 1
-                else:
-                    self.blackMovesRemaining[
-                        self.piecePosCopy[move.getFromPos()[1]][move.getFromPos()[0]].pieceCommander] = 1
 
     # Returns the piece position array.
     def updatePiecePosCopy(self, board):

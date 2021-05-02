@@ -83,21 +83,15 @@ class AiMove(QThread):
             self.kingAi.noMove.connect(self.kingAiNoMove)
             self.kingAi.start()
 
-            if self.movesRemaining[0] == 1:
-                self.bishopAi1 = AiBrain.AiBrain(self.bishop1BoardInterface, self.color, 0)
-                self.bishopAi1.foundBestMove.connect(self.bishopAi1Finished)
-                self.bishopAi1.noMove.connect(self.bishopAi1NoMove)
-                self.bishopAi1.start()
-            else:
-                self.bishopAi1Complete = True
+            self.bishopAi1 = AiBrain.AiBrain(self.bishop1BoardInterface, self.color, 0)
+            self.bishopAi1.foundBestMove.connect(self.bishopAi1Finished)
+            self.bishopAi1.noMove.connect(self.bishopAi1NoMove)
+            self.bishopAi1.start()
 
-            if self.movesRemaining[2] == 1:
-                self.bishopAi2 = AiBrain.AiBrain(self.bishop2BoardInterface, self.color, 2)
-                self.bishopAi2.foundBestMove.connect(self.bishopAi2Finished)
-                self.bishopAi2.noMove.connect(self.bishopAi2NoMove)
-                self.bishopAi2.start()
-            else:
-                self.bishopAi2Complete = True
+            self.bishopAi2 = AiBrain.AiBrain(self.bishop2BoardInterface, self.color, 2)
+            self.bishopAi2.foundBestMove.connect(self.bishopAi2Finished)
+            self.bishopAi2.noMove.connect(self.bishopAi2NoMove)
+            self.bishopAi2.start()
 
         # Wait for all threads to finish.
         while self.isRunning and not (self.kingAiComplete and self.bishopAi1Complete and self.bishopAi2Complete):
@@ -135,11 +129,11 @@ class AiMove(QThread):
                     self.sendToBishop = True
                     self.overallBestMove = self.kingMove
 
-            if not self.bishopMove1 == 0 and (self.overallBestMove == 0 or self.bishopMove1.getValue() > self.overallBestMove.getValue()) and self.movesRemaining[0] == 1:
+            if not self.bishopMove1 == 0 and (self.overallBestMove == 0 or self.bishopMove1.getValue() > self.overallBestMove.getValue()):
                 self.sendToBishop = False
                 self.overallBestMove = self.bishopMove1
 
-            if not self.bishopMove2 == 0 and (self.overallBestMove == 0 or self.bishopMove2.getValue() > self.overallBestMove.getValue()) and self.movesRemaining[2] == 1:
+            if not self.bishopMove2 == 0 and (self.overallBestMove == 0 or self.bishopMove2.getValue() > self.overallBestMove.getValue()):
                 self.sendToBishop = False
                 self.overallBestMove = self.bishopMove2
 
