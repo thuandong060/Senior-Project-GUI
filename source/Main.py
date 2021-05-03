@@ -11,6 +11,15 @@ import resources
 import math
 import random
 
+# Project 4D by:
+# Sepehr Gohayeshi
+# Alex Thacker
+# Thuan Dong
+# Reza Dadashi
+# Muna Jemal
+# Thewodros Abebe
+# Alex Xiong
+
 # pyinstaller.exe --onefile --windowed --icon=appIcon.ico source\Main.py
 # pyrcc5 -o resources.py resources.qrc
 
@@ -158,18 +167,6 @@ class chessBoardWindow(QMainWindow):
                          ["0", "0", "0", "0", "0", "0", "0", "0"],
                          ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
                          ["wr", "wk", "wb", "wq", "wki", "wb", "wk", "wr"]]
-
-        '''
-        self.pieceSet = [["0", "0", "0", "0", "bki", "0", "0", "0"],
-                         ["0", "0", "0", "0", "0", "0", "0", "0"],
-                         ["0", "0", "0", "0", "0", "0", "0", "0"],
-                         ["0", "0", "0", "0", "0", "0", "0", "0"],
-                         ["0", "0", "0", "0", "0", "0", "0", "0"],
-                         ["0", "0", "0", "0", "0", "0", "0", "0"],
-                         ["0", "0", "0", "0", "0", "0", "0", "0"],
-                         ["0", "0", "0", "0", "wki", "0", "0", "0"]]
-        '''
-
 
         # Holds labels for the pieces on the board.
         self.piecePos = [["0", "0", "0", "0", "0", "0", "0", "0"],
@@ -1169,7 +1166,6 @@ class chessBoardWindow(QMainWindow):
         self.bishop2BoardInterface.updateBlackTurnsRemaining()
         self.bishop2BoardInterface.updateKingPositions()
 
-
         # Set and check the moves remaining for the current player.
         self.checkSwitchTurn(commander)
 
@@ -1518,3 +1514,12 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# Project 4D by:
+# Sepehr Gohayeshi
+# Alex Thacker
+# Thuan Dong
+# Reza Dadashi
+# Muna Jemal
+# Thewodros Abebe
+# Alex Xiong

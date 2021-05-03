@@ -1,5 +1,4 @@
 from source import PieceMoveInfo
-import copy
 
 class BoardInterface:
     def __init__(self, mainBoard):

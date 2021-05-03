@@ -91,9 +91,21 @@ class AiBrain(QThread):
                                                                                   move.getToPos()[0] + xCord]\
                                                                               .pieceColor:
                             if piece.pieceColor == 0:
-                                overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                overallValue += \
+                                    (currentBoard.valuePieceDefendAndAttack
+                                     (piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] +
+                                                                                 yCord][move.getToPos()[0] +
+                                                                                        xCord].pieceType) / 4) * \
+                                    ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) +
+                                     (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
                             else:
-                                overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                overallValue += \
+                                    (currentBoard.valuePieceDefendAndAttack
+                                     (piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] +
+                                                                                 yCord][move.getToPos()[0] +
+                                                                                        xCord].pieceType) / 4) * \
+                                    ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) +
+                                     (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
         # If the piece is not a rook
         else:
             for yCord in range(-1, 2):
@@ -110,14 +122,38 @@ class AiBrain(QThread):
                                                                               .pieceColor:
                             if piece.pieceColor == 0:
                                 if piece.pieceType == "king" and currentBoard.whiteKingPieceCount > 1:
-                                    overallValue -= (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                    overallValue -= \
+                                        (currentBoard.valuePieceDefendAndAttack
+                                         (piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] +
+                                                                                     yCord][move.getToPos()[0] +
+                                                                                            xCord].pieceType) / 4) * \
+                                        ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) +
+                                         (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
                                 else:
-                                    overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                    overallValue += \
+                                        (currentBoard.valuePieceDefendAndAttack
+                                         (piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] +
+                                                                                     yCord][move.getToPos()[0] +
+                                                                                            xCord].pieceType) / 4) * \
+                                        ((8 - abs(currentBoard.whiteKingPosition[0] - (move.getToPos()[0] + xCord))) +
+                                         (8 - abs(currentBoard.whiteKingPosition[1] - (move.getToPos()[1] + yCord))))
                             else:
                                 if piece.pieceType == "king" and currentBoard.blackKingPieceCount > 1:
-                                    overallValue -= (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                    overallValue -= \
+                                        (currentBoard.valuePieceDefendAndAttack
+                                         (piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] +
+                                                                                     yCord][move.getToPos()[0] +
+                                                                                            xCord].pieceType) / 4) * \
+                                        ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) +
+                                         (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
                                 else:
-                                    overallValue += (currentBoard.valuePieceDefendAndAttack(piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] + yCord][move.getToPos()[0] + xCord].pieceType) / 4) * ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) + (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
+                                    overallValue += \
+                                        (currentBoard.valuePieceDefendAndAttack
+                                         (piece.pieceType, currentBoard.piecePosCopy[move.getToPos()[1] +
+                                                                                     yCord][move.getToPos()[0] +
+                                                                                            xCord].pieceType) / 4) * \
+                                        ((8 - abs(currentBoard.blackKingPosition[0] - (move.getToPos()[0] + xCord))) +
+                                         (8 - abs(currentBoard.blackKingPosition[1] - (move.getToPos()[1] + yCord))))
 
         # If king is under attack, take action.
         if piece.pieceType == "king":
@@ -215,6 +251,7 @@ class AiBrain(QThread):
         return overallValue
 
     def evaluateAllMoves(self, currentBoard, turn, caller):
+        # Go through all moves the commander can make and return the best one based on evaluation metrics.
         if self.isRunning:
             bestEval = self.MIN
 
@@ -249,3 +286,12 @@ class AiBrain(QThread):
             else:
                 print("Val = " + str(bestMove.getValue()))
                 self.foundBestMove.emit(bestMove)
+
+# Project 4D by:
+# Sepehr Gohayeshi
+# Alex Thacker
+# Thuan Dong
+# Reza Dadashi
+# Muna Jemal
+# Thewodros Abebe
+# Alex Xiong
