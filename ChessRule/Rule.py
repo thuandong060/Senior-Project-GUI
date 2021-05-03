@@ -158,8 +158,6 @@ class Rook:
 
 
 def checkAttackDistance(start, end, maxDist):
-    # Can be simplified. Like this for debugging.
-    # print(str(abs(end[0] - start[0])) + " " + str(abs(end[1] - start[1])))
     if abs(end[0] - start[0]) <= maxDist and abs(end[1] - start[1]) <= maxDist:
         return True
     else:
@@ -316,3 +314,12 @@ def distance(start, end):
     else:
         value = sqrt(pow((end[0] - start[0]), 2) + pow((end[1] - start[1]), 2))
     return value
+
+# Project 4D by:
+# Sepehr Gohayeshi
+# Alex Thacker
+# Thuan Dong
+# Reza Dadashi
+# Muna Jemal
+# Thewodros Abebe
+# Alex Xiong
